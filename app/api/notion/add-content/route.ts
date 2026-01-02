@@ -2,17 +2,11 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 import { Client } from "@notionhq/client"
+import { getNotionToken } from "@/lib/notion/get-token"
 
 export async function POST(request: NextRequest) {
   try {
-    const { contentType, contentId, notionToken } = await request.json()
-
-    if (!notionToken) {
-      return NextResponse.json({ error: "Notion token required" }, { status: 400 })
-    }
-
-    // Initialize Notion client with user's token
-    const notion = new Client({ auth: notionToken })
+    const { contentType, contentId, notionToken: providedToken } = await request.json()
 
     // Get Supabase client
     const cookieStore = await cookies()
@@ -38,6 +32,23 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    // Use provided token OR get from settings (prioritizes integration token)
+    const notionToken = providedToken || await getNotionToken(user.id)
+
+    if (!notionToken) {
+      return NextResponse.json(
+        { 
+          error: "Notion token required",
+          message: "Please add your Notion integration token in Settings",
+          suggestion: "Create integration at notion.so/my-integrations"
+        },
+        { status: 400 }
+      )
+    }
+
+    // Initialize Notion client with token
+    const notion = new Client({ auth: notionToken })
 
     // Fetch content from Supabase based on type
     let content, notionPage

@@ -75,6 +75,42 @@
   --sidebar-ring: oklch(0.6 0.24 25);
 }
 
+/* Eywa Theme - Bioluminescent Avatar-inspired colors */
+.eywa {
+  --background: oklch(0.08 0.08 240); /* Deep blue-black */
+  --foreground: oklch(0.95 0.05 180); /* Bright cyan-white */
+  --card: oklch(0.12 0.1 250); /* Dark blue-purple */
+  --card-foreground: oklch(0.95 0.05 180);
+  --popover: oklch(0.12 0.1 250);
+  --popover-foreground: oklch(0.95 0.05 180);
+  --primary: oklch(0.65 0.2 200); /* Bright cyan-blue */
+  --primary-foreground: oklch(0.08 0.08 240);
+  --secondary: oklch(0.18 0.12 260); /* Purple-blue */
+  --secondary-foreground: oklch(0.95 0.05 180);
+  --muted: oklch(0.15 0.1 250);
+  --muted-foreground: oklch(0.7 0.08 200);
+  --accent: oklch(0.6 0.18 150); /* Green-cyan */
+  --accent-foreground: oklch(0.08 0.08 240);
+  --destructive: oklch(0.55 0.2 20); /* Slight red-orange */
+  --destructive-foreground: oklch(0.95 0.05 180);
+  --border: oklch(0.2 0.12 240); /* Blue-purple border */
+  --input: oklch(0.15 0.1 250);
+  --ring: oklch(0.65 0.2 200); /* Cyan ring */
+  --chart-1: oklch(0.65 0.2 200); /* Cyan */
+  --chart-2: oklch(0.6 0.18 150); /* Green */
+  --chart-3: oklch(0.7 0.15 280); /* Purple */
+  --chart-4: oklch(0.65 0.2 220); /* Blue */
+  --chart-5: oklch(0.6 0.2 180); /* Teal */
+  --sidebar: oklch(0.06 0.08 240); /* Darker blue-black */
+  --sidebar-foreground: oklch(0.95 0.05 180);
+  --sidebar-primary: oklch(0.65 0.2 200);
+  --sidebar-primary-foreground: oklch(0.08 0.08 240);
+  --sidebar-accent: oklch(0.12 0.1 250);
+  --sidebar-accent-foreground: oklch(0.95 0.05 180);
+  --sidebar-border: oklch(0.15 0.1 250);
+  --sidebar-ring: oklch(0.65 0.2 200);
+}
+
 @theme inline {
   --font-sans: "Geist", "Geist Fallback";
   --font-mono: "Geist Mono", "Geist Mono Fallback";
@@ -123,7 +159,7 @@
   body {
     @apply bg-background text-foreground;
     /* Add full-screen background image to body */
-    background-image: url("/authority-anime-bg.jpg");
+    background-image: url("/assets/backgrounds/authority-bg-1.png");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -138,6 +174,119 @@
 
   *::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Scrollable message content scrollbars */
+  .scrollable-message-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+  }
+
+  .scrollable-message-content::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+
+  .scrollable-message-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollable-message-content::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.5);
+    border-radius: 3px;
+  }
+
+  .scrollable-message-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(75, 85, 99, 0.7);
+  }
+
+  /* Enhanced markdown typography */
+  .prose {
+    font-feature-settings: "kern" 1, "liga" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Better paragraph spacing */
+  .prose p + p {
+    margin-top: 1.25rem;
+  }
+
+  /* Improved list spacing */
+  .prose ul > li,
+  .prose ol > li {
+    padding-left: 0.5rem;
+  }
+
+  .prose ul > li::marker,
+  .prose ol > li::marker {
+    color: rgb(248, 113, 113);
+    font-weight: 600;
+  }
+
+  /* Nested lists */
+  .prose ul ul,
+  .prose ol ol,
+  .prose ul ol,
+  .prose ol ul {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Better code block styling */
+  .prose pre {
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  /* Improved blockquote */
+  .prose blockquote p {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+
+  .prose blockquote p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Table improvements */
+  .prose table {
+    font-size: 0.875rem;
+  }
+
+  .prose table tr:nth-child(even) {
+    background-color: rgba(17, 24, 39, 0.3);
+  }
+
+  .prose table tr:hover {
+    background-color: rgba(17, 24, 39, 0.5);
+    transition: background-color 0.2s;
+  }
+
+  /* Better heading spacing */
+  .prose h1 + p,
+  .prose h2 + p,
+  .prose h3 + p,
+  .prose h4 + p {
+    margin-top: 0.75rem;
+  }
+
+  /* Image improvements */
+  .prose img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Link improvements */
+  .prose a {
+    word-break: break-word;
+  }
+
+  /* Better emphasis */
+  .prose em {
+    font-style: italic;
+    color: rgb(229, 231, 235);
   }
 }
 
