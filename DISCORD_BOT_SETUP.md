@@ -37,9 +37,9 @@ Combined permissions integer: **2147614720**
 
 Use this URL template (replace CLIENT_ID with your application's client ID):
 
-```
+\`\`\`
 https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=2147614720&scope=bot%20applications.commands
-```
+\`\`\`
 
 ### 3. Invite Bot to Server
 
@@ -88,7 +88,7 @@ All notifications use Discord's rich embeds with:
 
 Add these to your `.env` file:
 
-```env
+\`\`\`env
 # Discord Bot Token (from Developer Portal)
 DISCORD_BOT_TOKEN=your_bot_token_here
 
@@ -97,7 +97,7 @@ DISCORD_GUILD_ID=your_guild_id_here
 
 # Discord Channel ID (Channel for notifications)
 DISCORD_CHANNEL_ID=your_channel_id_here
-```
+\`\`\`
 
 ## Security Best Practices
 
@@ -139,7 +139,7 @@ DISCORD_CHANNEL_ID=your_channel_id_here
 
 ## Example Notification
 
-```json
+\`\`\`json
 {
   "username": "Authority",
   "avatar_url": "https://your-domain.com/authority-avatar.png",
@@ -155,7 +155,7 @@ DISCORD_CHANNEL_ID=your_channel_id_here
     "timestamp": "2025-01-01T12:00:00.000Z"
   }]
 }
-```
+\`\`\`
 
 ## Advanced Features
 

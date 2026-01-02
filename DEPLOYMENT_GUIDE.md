@@ -4,7 +4,7 @@
 
 ### 1. Run Database Migrations
 Execute all SQL scripts in order in your Supabase SQL editor:
-```bash
+\`\`\`bash
 scripts/001_create_chat_tables.sql
 scripts/002_create_world_building_tables.sql
 scripts/003_create_workspace_tables.sql
@@ -18,7 +18,7 @@ scripts/010_create_ticker_messages_table.sql
 scripts/011_create_admin_config_table.sql
 scripts/012_add_notion_sync_fields.sql
 scripts/013_add_notion_page_ids.sql
-```
+\`\`\`
 
 ### 2. Required Environment Variables
 
@@ -61,10 +61,10 @@ Click the "Publish" button in the top right of the editor
 4. Deploy
 
 **Option 3: Vercel CLI**
-```bash
+\`\`\`bash
 vercel
 vercel --prod
-```
+\`\`\`
 
 ### 4. Post-Deployment Steps
 

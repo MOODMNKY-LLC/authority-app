@@ -56,12 +56,12 @@ This document outlines the complete architecture for syncing Authority app data 
 
 ### Supabase Schema Updates
 Add `notion_page_id` column to all forge tables:
-```sql
+\`\`\`sql
 ALTER TABLE characters ADD COLUMN notion_page_id TEXT;
 ALTER TABLE worlds ADD COLUMN notion_page_id TEXT;
 ALTER TABLE stories ADD COLUMN notion_page_id TEXT;
 ALTER TABLE chat_hub_sessions ADD COLUMN notion_page_id TEXT;
-```
+\`\`\`
 
 ## Phase 3: Bidirectional Sync
 
@@ -91,7 +91,7 @@ ALTER TABLE chat_hub_sessions ADD COLUMN notion_page_id TEXT;
 
 ### Database ID Mapping
 Store mapping in `user_settings`:
-```json
+\`\`\`json
 {
   "notion_config": {
     "workspace_id": "...",
@@ -103,7 +103,7 @@ Store mapping in `user_settings`:
     }
   }
 }
-```
+\`\`\`
 
 ## Phase 5: RAG Integration
 
@@ -166,7 +166,7 @@ Store mapping in `user_settings`:
 - Vercel Blob for image storage
 
 ### Data Flow
-```
+\`\`\`
 User Action in App
   ↓
 Supabase Database Updated
@@ -178,7 +178,7 @@ Notion API Creates/Updates Page
 Notion Page ID Stored in Supabase
   ↓
 Success Response to User
-```
+\`\`\`
 
 ### Error Handling
 - Retry logic for failed syncs
