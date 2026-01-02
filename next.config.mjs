@@ -11,6 +11,8 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  // Allow cross-origin requests from network address in development
+  allowedDevOrigins: ['10.3.0.94'],
 }
 
 export default nextConfig
