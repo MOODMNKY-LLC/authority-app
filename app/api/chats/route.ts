@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
     let query = supabase.from("chats").select("*").order("last_message_at", { ascending: false })
 
     if (type === "normal") {
-      // Get chats not associated with any project
-      query = query.is("project_id", null)
+      // Get chats not associated with any project (include both temporary and permanent)
+      query = query.is("project_id", null).eq("is_project_chat", false)
     } else if (type === "project" && projectId) {
       // Get chats for a specific project
       query = query.eq("project_id", projectId).eq("is_project_chat", true)

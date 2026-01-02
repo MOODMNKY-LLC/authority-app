@@ -14,6 +14,8 @@ import {
   Brain,
   RefreshCw,
   Loader2,
+  ExternalLink,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +28,10 @@ import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge" // Import Badge
+import { NotionSyncIndicator } from "@/components/notion-sync-indicator"
+import { NotionSyncButton } from "@/components/notion-sync-button"
+import { AdminUsersSection } from "@/components/admin-users-section"
+import { createClient } from "@/lib/supabase/client"
 
 interface AdminPanelProps {
   open: boolean
@@ -34,6 +40,8 @@ interface AdminPanelProps {
 
 export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
   const { toast } = useToast()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [checkingAdmin, setCheckingAdmin] = useState(true)
   const [config, setConfig] = useState<Record<string, any>>({
     // General
     webui_url: "http://localhost:3000",
@@ -115,6 +123,12 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
   const [fetchingVoices, setFetchingVoices] = useState(false)
   const [fetchingOpenAIVoices, setFetchingOpenAIVoices] = useState(false)
   const [fetchingGoogleVoices, setFetchingGoogleVoices] = useState(false)
+  const [notionSyncStatus, setNotionSyncStatus] = useState<Record<string, boolean>>({
+    Characters: false,
+    Worlds: false,
+    Stories: false,
+    "Chat Sessions": false,
+  })
 
   const openaiModelsList = [
     { id: "gpt-4.1", name: "GPT-4.1", description: "Flagship model for complex tasks, 1M context" },
@@ -247,6 +261,74 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
     }
   }, [config.enable_ollama, config.ollama_base_url])
 
+  // Check admin status on mount
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) {
+          setIsAdmin(false)
+          setCheckingAdmin(false)
+          return
+        }
+
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single()
+
+        setIsAdmin(profile?.role === "admin")
+      } catch (error) {
+        console.error("[Authority] Error checking admin status:", error)
+        setIsAdmin(false)
+      } finally {
+        setCheckingAdmin(false)
+      }
+    }
+
+    if (open) {
+      checkAdminStatus()
+    }
+  }, [open])
+
+  // Fetch Notion sync status
+  useEffect(() => {
+    const fetchNotionSyncStatus = async () => {
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) return
+
+        const { data: settings } = await supabase
+          .from("user_settings")
+          .select("notion_databases")
+          .eq("user_id", user.id)
+          .single()
+
+        if (settings?.notion_databases) {
+          const databases = settings.notion_databases as Record<string, string>
+          setNotionSyncStatus({
+            Characters: !!databases["Characters"],
+            Worlds: !!databases["Worlds"],
+            Stories: !!databases["Stories"],
+            "Chat Sessions": !!databases["Chat Sessions"],
+          })
+        }
+      } catch (error) {
+        console.error("[Authority] Error fetching Notion sync status:", error)
+      }
+    }
+
+    fetchNotionSyncStatus()
+  }, [config.notion_api_key]) // Re-fetch when token changes
+
   const updateConfig = (key: string, value: any) => {
     setConfig((prev) => ({ ...prev, [key]: value }))
   }
@@ -306,6 +388,40 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
 
   if (!open) return null
 
+  // Show access denied if not admin
+  if (!checkingAdmin && !isAdmin) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="w-full max-w-md bg-zinc-950/95 backdrop-blur-xl rounded-xl border border-zinc-800/50 shadow-2xl p-8">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <Shield className="h-12 w-12 text-red-500" />
+            <h2 className="text-2xl font-semibold text-white">Access Denied</h2>
+            <p className="text-zinc-400">
+              You must have admin privileges to access the Admin Panel. Contact your administrator if you believe this
+              is an error.
+            </p>
+            <Button onClick={() => onOpenChange(false)} className="mt-4 bg-red-600 hover:bg-red-700">
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (checkingAdmin) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="w-full max-w-md bg-zinc-950/95 backdrop-blur-xl rounded-xl border border-zinc-800/50 shadow-2xl p-8">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+            <p className="text-zinc-400">Checking permissions...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const modelCheck =
     config.base_provider === "ollama" && config.base_model_ollama
       ? checkModelCapabilities(config.base_model_ollama)
@@ -344,17 +460,19 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
 
           <nav className="space-y-1 flex-1 overflow-y-auto p-2">
             {[
-              { id: "ai-core", icon: Brain, label: "AI Core", description: "Base model config" },
-              { id: "api-keys", icon: Key, label: "API Keys", description: "Unlock features", badge: "🔓" },
+              { id: "ai-core", icon: Brain, label: "AI Core", description: "System-wide AI config" },
+              { id: "integrations", icon: Key, label: "Integrations", description: "System API keys" },
               { id: "web-search", icon: Globe, label: "Web Search", description: "Hardcoded tools" },
               { id: "mcp", icon: Server, label: "MCP Servers", description: "Context protocols" },
               { id: "automation", icon: Workflow, label: "Automation", description: "n8n workflows" },
               { id: "webhooks", icon: Webhook, label: "Webhooks & SSR", description: "Realtime events" },
-              { id: "database", icon: Database, label: "Database", description: "Environment vars" },
-              { id: "security", icon: Shield, label: "Security", description: "Access control" },
+                  { id: "database", icon: Database, label: "Database", description: "Environment vars" },
+                  { id: "users", icon: Users, label: "Users", description: "Role management" },
+                  { id: "security", icon: Shield, label: "Security", description: "Access control" },
             ].map((item) => (
               <button
                 key={item.id}
+                data-tab-id={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
                   "w-full flex items-start gap-3 px-3 py-2.5 rounded-md text-sm transition-colors group",
@@ -729,16 +847,16 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
               </div>
             )}
 
-            {/* API Keys Tab */}
-            {activeTab === "api-keys" && (
+            {/* Integrations Tab */}
+            {activeTab === "integrations" && (
               <div className="space-y-6">
                 <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
                   <h2 className="text-2xl font-semibold text-white mb-2 flex items-center gap-2">
                     <Key className="h-6 w-6 text-red-500" />
-                    API Keys - Unlock Features
+                    Integrations - API Keys & Tokens
                   </h2>
                   <p className="text-zinc-400 text-sm">
-                    Add your personal API keys to unlock premium features and remove default limits. Status indicators
+                    Add your personal API keys and integration tokens to unlock premium features and remove default limits. Status indicators
                     show which features are active.
                   </p>
                 </div>
@@ -803,16 +921,22 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                   </CardContent>
                 </Card>
 
-                {/* Notion */}
+                {/* Notion Integration Token */}
                 <Card className="bg-zinc-900/50 border-zinc-800/50 backdrop-blur">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-white flex items-center gap-2">
-                          Notion
-                          <StatusBadge statuses={config.notion_api_key ? ["personal", "connected"] : ["disabled"]} />
+                          Notion Integration Token
+                          <StatusBadge
+                            statuses={
+                              config.notion_api_key
+                                ? ["personal", "active"]
+                                : ["disabled"]
+                            }
+                          />
                         </CardTitle>
-                        <p className="text-sm text-zinc-400 mt-1">World-building database and RAG</p>
+                        <p className="text-sm text-zinc-400 mt-1">Personal integration token for Notion API access</p>
                       </div>
                     </div>
                   </CardHeader>
@@ -824,7 +948,7 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                         type="password"
                         value={config.notion_api_key}
                         onChange={(e) => updateConfig("notion_api_key", e.target.value)}
-                        placeholder="ntn_..."
+                        placeholder="secret_..."
                         className="bg-zinc-950 border-zinc-800 font-mono"
                       />
                       <div className="flex items-start gap-2 text-xs text-zinc-500">
@@ -839,12 +963,46 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                         <a
                           href="https://www.notion.so/my-integrations"
                           target="_blank"
-                          className="text-red-400 hover:underline"
+                          className="text-red-400 hover:underline inline-flex items-center gap-1"
                           rel="noreferrer"
                         >
                           notion.so/my-integrations
+                          <ExternalLink className="h-3 w-3" />
                         </a>
                       </p>
+                      <p className="text-xs text-yellow-400/80 mt-2">
+                        <strong>Note:</strong> This token provides reliable API access. OAuth tokens may not always be accessible through Supabase Auth.
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-zinc-800">
+                      <Button variant="outline" className="w-full" onClick={() => setActiveTab("notion")}>
+                        Go to Notion Section for OAuth & Database Sync
+                      </Button>
+                      {Object.values(notionSyncStatus).some(Boolean) && (
+                        <div className="mt-3">
+                          <p className="text-xs text-zinc-500 mb-2">Quick Status:</p>
+                          <div className="space-y-1">
+                            {[
+                              { name: "Characters", key: "Characters" },
+                              { name: "Worlds", key: "Worlds" },
+                              { name: "Stories", key: "Stories" },
+                              { name: "Chat Sessions", key: "Chat Sessions" },
+                            ].map((forge) => (
+                              <div key={forge.key} className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                  <NotionSyncIndicator
+                                    synced={notionSyncStatus[forge.key as keyof typeof notionSyncStatus]}
+                                  />
+                                  <span className="text-zinc-400">{forge.name}</span>
+                                </div>
+                                <span className="text-zinc-600">
+                                  {notionSyncStatus[forge.key as keyof typeof notionSyncStatus] ? "✓" : "○"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1446,6 +1604,13 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+            )}
+
+            {/* Users Tab */}
+            {activeTab === "users" && (
+              <div className="space-y-6">
+                <AdminUsersSection />
               </div>
             )}
 

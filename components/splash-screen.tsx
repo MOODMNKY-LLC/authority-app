@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Skull } from "lucide-react"
+import Image from "next/image"
 
 export function SplashScreen() {
   const [isVisible, setIsVisible] = useState(true)
@@ -29,7 +29,7 @@ export function SplashScreen() {
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black"
           style={{
-            backgroundImage: "url('/authority-anime-bg.jpg')",
+            backgroundImage: "url('/assets/backgrounds/authority-bg-1.png')",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -46,7 +46,16 @@ export function SplashScreen() {
             >
               {/* Red glow effect */}
               <div className="absolute inset-0 bg-red-600/30 blur-3xl rounded-full animate-pulse" />
-              <Skull className="h-24 w-24 text-red-600 relative z-10" strokeWidth={1.5} />
+              <div className="relative z-10 w-24 h-24">
+                <Image
+                  src="/assets/icons/authority-icon_no_background_upscaled.png"
+                  alt="Authority"
+                  width={96}
+                  height={96}
+                  className="drop-shadow-2xl"
+                  priority
+                />
+              </div>
             </motion.div>
 
             <motion.h1
@@ -64,7 +73,7 @@ export function SplashScreen() {
               transition={{ delay: 0.8, duration: 0.5 }}
               className="text-xl text-gray-300 font-light tracking-wide"
             >
-              Your Gothic Writing Companion
+              AI-Assisted World Building System
             </motion.p>
 
             <motion.div

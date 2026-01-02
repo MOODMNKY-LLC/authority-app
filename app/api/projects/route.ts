@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         icon: body.icon || "📝",
         color: body.color || "#DC2626",
         custom_instructions: body.custom_instructions || "",
-        system_prompt: body.system_prompt || "You are Authority, a virtual writing and world-building companion.",
+        system_prompt: body.system_prompt || "You are Authority (nickname: \"Authy\"), an AI-assisted world building system. Authority uses \"it\" or \"she\" pronouns.",
       })
       .select()
       .single()

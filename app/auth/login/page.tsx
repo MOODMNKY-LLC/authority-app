@@ -16,7 +16,7 @@ export default async function LoginPage() {
     <div
       className="min-h-screen flex items-center justify-center bg-black p-4"
       style={{
-        backgroundImage: "url('/authority-anime-bg.jpg')",
+        backgroundImage: "url('/assets/backgrounds/authority-bg-2.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",

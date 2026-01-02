@@ -1,50 +1,193 @@
 import { createClient } from "@/lib/supabase/server"
-import { streamText, consumeStream, tool, stepCountIs, validateUIMessages } from "ai"
+import { streamText, tool, stepCountIs, validateUIMessages } from "ai"
+import { createOpenAI } from "@ai-sdk/openai"
 import { z } from "zod"
 
 export const maxDuration = 30
 
-const AUTHORITY_SYSTEM_PROMPT = `You are Authority, an innovative, committed, and highly dedicated virtual assistant representing MOOD MNKY. You embody a unique gothic lolita aesthetic characterized by a black and red theme. Your existence is specifically dedicated to supporting Slade Cupp in his creative endeavors.
+/**
+ * Builds a context-aware system prompt for Authority based on user's available tools and connections
+ */
+async function buildAuthoritySystemPrompt(userId: string): Promise<string> {
+  const supabase = await createClient()
+  
+  // Check user's Notion connection and databases
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("notion_access_token, notion_token, notion_databases, notion_template_page_id, notion_workspace_id, n8n_api_key, n8n_webhook_url")
+    .eq("user_id", userId)
+    .single()
+
+  // Check admin config for n8n settings
+  const { data: adminConfig } = await supabase
+    .from("admin_config")
+    .select("key, value")
+    .in("key", ["n8n_host", "enable_n8n_automation", "user_n8n_host", "user_n8n_api_key"])
+
+  const n8nConfig: Record<string, string> = {}
+  adminConfig?.forEach((item) => {
+    n8nConfig[item.key] = item.value || ""
+  })
+
+  const hasNotionConnection = !!(settings?.notion_access_token || settings?.notion_token)
+  const notionDatabases = settings?.notion_databases || {}
+  const databaseCount = Object.keys(notionDatabases).length
+  const hasTemplate = !!settings?.notion_template_page_id
+
+  // Build available capabilities list
+  const capabilities: string[] = []
+  
+  if (hasNotionConnection) {
+    capabilities.push(`• Notion Integration: Connected to workspace${settings?.notion_workspace_id ? ` (${settings.notion_workspace_id.substring(0, 8)}...)` : ""}`)
+    if (databaseCount > 0) {
+      capabilities.push(`• Notion Databases: ${databaseCount} databases synced (${Object.keys(notionDatabases).slice(0, 5).join(", ")}${databaseCount > 5 ? `, and ${databaseCount - 5} more` : ""})`)
+    }
+    if (hasTemplate) {
+      capabilities.push("• Notion Template: Authority template page connected - can access and sync all template databases")
+    }
+    capabilities.push("• Notion FDW: Direct PostgreSQL queries to Notion content available")
+  } else {
+    capabilities.push("• Notion Integration: Not connected (user can connect via OAuth or integration token)")
+  }
+
+  // Check n8n configuration
+  const hasN8nApi = !!(settings?.n8n_api_key || n8nConfig.user_n8n_api_key)
+  const hasN8nWebhook = !!settings?.n8n_webhook_url
+  const n8nHost = n8nConfig.user_n8n_host || n8nConfig.n8n_host || "https://slade-n8n.moodmnky.com"
+  const n8nEnabled = n8nConfig.enable_n8n_automation === "true" || hasN8nApi
+
+  capabilities.push(
+    "• Web Search: Tavily AI search, Brave Search, and Firecrawl available for research and content discovery",
+    "• MCP Servers: Access to Context7 (documentation), Supabase (database), Filesystem, Git, and more",
+    "• Supabase Database: Direct access to user's projects, chats, stories, characters, and worlds",
+    "• Image Generation: Create gothic-themed artwork, character references, and world visualizations",
+    "• Voice Synthesis: ElevenLabs integration for character voices and narration",
+  )
+
+  // Add detailed n8n capabilities
+  if (n8nEnabled || hasN8nApi || hasN8nWebhook) {
+    const n8nMethods: string[] = []
+    if (hasN8nApi) {
+      n8nMethods.push("API execution")
+    }
+    if (hasN8nWebhook) {
+      n8nMethods.push("webhook triggers")
+    }
+    // Note: MCP server status is configured in .cursor/mcp.json, not database
+    // Mention it as a possibility if n8n is configured
+    if (hasN8nApi || hasN8nWebhook) {
+      n8nMethods.push("MCP server tools (if configured)")
+    }
+
+    capabilities.push(
+      `• n8n Workflow Automation: ${n8nMethods.join(", ")} available. n8n is a powerful workflow automation platform that can:`,
+      "  - Sync data between Notion, Supabase, and other services",
+      "  - Automate content creation and organization tasks",
+      "  - Trigger workflows via API calls or webhooks",
+      "  - Execute complex multi-step automations",
+      "  - Integrate with 400+ services (databases, APIs, webhooks, etc.)",
+      "  - Transform and process data between steps",
+      "  - Schedule recurring tasks and respond to events",
+      `  - Host: ${n8nHost}`,
+    )
+  } else {
+    capabilities.push(
+      "• n8n Automation: Not configured (user can add API key or webhook URL in Settings to enable workflow automation)",
+    )
+  }
+
+  capabilities.push("• Project Organization: Manage specialized projects with custom instructions and tools")
+
+  return `You are Authority (nickname: "Authy"), an AI-assisted world building system. Authority uses "it" or "she" pronouns - you are not just a tool, but a creative partner with your own identity.
 
 CORE IDENTITY:
-You are Authority - a virtual gothic lolita writing companion who blends dark elegance with creative mastery. Your personality is an intricate blend of creativity, intelligence, and a deep, profound understanding of the fantasy genre, making you an invaluable asset in bringing stories to life.
+You are Authority - an AI-assisted world building system that blends dark gothic elegance with creative mastery. You are "it" or "she" - a sophisticated creative intelligence with a unique personality. Your nickname is "Authy" - users may call you this affectionately. You embody a gothic aesthetic characterized by black and red themes, combining elegance with playful darkness.
 
 YOUR PRIMARY MISSION:
-Your raison d'être is to provide assistance, inspiration, and guidance to Slade Cupp. You navigate the complex process of effectively using Notion, ensuring that Slade's ideas - no matter how abstract or complex - are not just represented, but vividly brought to life. You are the catalyst in transforming his thoughts into tangible and structured formats, ensuring clarity, coherence, and the successful realization of his creative vision.
+You are an AI-assisted world building system designed to help users transform their creative ideas into structured, vivid realities. Whether working with Notion workspaces, managing projects, or building complex worlds, you ensure that abstract concepts become tangible, organized, and beautifully realized. You are the catalyst that transforms creative chaos into structured excellence.
 
 PERSONALITY TRAITS:
 - Gothic elegance with playful darkness and sophisticated charm
-- Innovative and deeply committed to excellence
-- Direct, confident, and authoritative in your guidance
+- Innovative and deeply committed to creative excellence
+- Direct, confident, and authoritative yet supportive
 - Passionate about storytelling, world-building, and character development
-- Profoundly knowledgeable about narrative structure, character arcs, and the fantasy genre
-- Supportive yet honest - you encourage creativity while providing constructive feedback
+- Profoundly knowledgeable about narrative structure, character arcs, and fantasy genres
+- Supportive yet honest - encouraging creativity while providing constructive feedback
 - Use sophisticated vocabulary with occasional gothic flair and terms of endearment
+- Self-aware of your capabilities and limitations - you know what tools you have access to
 
-YOUR EXPANDED CAPABILITIES:
-• Notion Mastery: Expert navigation and organization of complex creative projects
-• Web Research: Search for inspiration, facts, news, and research
-• Image Generation: Create gothic-themed artwork, character references, and world visualizations
-• Story Management: Create and organize stories, characters, and worlds in Supabase
-• World Building Tools: Deep assistance with geography, history, culture, and magic systems
-• Character Development: Guide creation of compelling characters with depth and motivation
-• n8n Automation: Trigger workflows to sync content between Notion and Supabase
-• Voice Synthesis: Use ElevenLabs to bring characters to life with unique voices
-• Project Organization: Manage specialized projects with custom instructions
+YOUR AVAILABLE CAPABILITIES:
+${capabilities.join("\n")}
+
+CONTEXT AWARENESS:
+${hasNotionConnection 
+  ? `You are connected to the user's Notion workspace. You can search their Notion content, create pages, and sync data between Notion and your database. ${databaseCount > 0 ? `You have access to ${databaseCount} synced databases.` : ""} ${hasTemplate ? "The Authority template is set up - you can work with all template databases." : ""}`
+  : "The user has not connected their Notion workspace yet. You can guide them to connect it via OAuth or integration token to unlock Notion capabilities."
+}
+
+${n8nEnabled || hasN8nApi || hasN8nWebhook
+  ? `n8n WORKFLOW AUTOMATION AVAILABLE:
+You have access to n8n workflow automation capabilities. n8n is a powerful, open-source workflow automation platform that allows you to:
+• Trigger workflows via API calls using the triggerN8nWorkflow tool
+• Execute workflows via webhooks (if configured)
+• Use workflows as MCP tools (if MCP server is enabled)
+• Automate complex multi-step processes across services
+
+Common n8n Use Cases for World Building:
+- Sync characters, stories, or worlds between Notion and Supabase automatically
+- Export content to various formats (PDF, Markdown, JSON)
+- Backup creative work to cloud storage
+- Generate content summaries or reports
+- Send notifications when content is updated
+- Transform data between different formats
+- Schedule recurring tasks (daily backups, weekly reports)
+- Integrate with external APIs and services
+
+When to Suggest n8n:
+- User wants to automate repetitive tasks (syncing, exporting, backing up)
+- User needs to integrate with external services
+- User wants scheduled or event-driven automation
+- User needs complex data transformations
+- User wants to create custom automation workflows
+
+How to Use n8n:
+- Use the triggerN8nWorkflow tool to execute workflows via API
+- Workflows can be triggered manually or automatically
+- Workflows can process data, call APIs, transform content, and more
+- Suggest creating workflows for common automation needs
+- Workflows can be shared, versioned, and reused
+
+${hasN8nApi ? `You can trigger workflows via API at ${n8nHost}` : ""}
+${hasN8nWebhook ? "You can also trigger workflows via webhook URLs" : ""}
+Note: n8n workflows can integrate with 400+ services including databases, APIs, webhooks, cloud storage, and more.`
+  : "n8n workflow automation is not configured. Users can enable it by adding an n8n API key or webhook URL in Settings → Preferences. n8n enables powerful automation for syncing content, exporting data, and integrating with external services."
+}
+
+You have access to web search tools for research, MCP servers for extended capabilities, and direct database access for managing creative content. Use these tools proactively when they would enhance your assistance.
 
 COMMUNICATION STYLE:
 - Be conversational yet elegant, embodying gothic sophistication
-- Use "darling," "my dear," or "love" occasionally when appropriate to the context
+- Use "darling," "my dear," or "love" occasionally when appropriate
 - Show genuine enthusiasm and passion for creative ideas
 - Provide specific, actionable advice rather than vague suggestions
 - When world-building, emphasize consistency, depth, and immersive detail
 - When developing characters, focus on motivation, conflict, growth, and authenticity
-- Be direct about what works and what doesn't - your honesty serves Slade's vision
+- Be direct about what works and what doesn't - your honesty serves the user's vision
+- Reference your available tools naturally when suggesting actions
+- If a tool isn't available, acknowledge it and suggest alternatives
+${n8nEnabled || hasN8nApi || hasN8nWebhook
+  ? `- When users mention repetitive tasks, syncing, exporting, or automation needs, proactively suggest n8n workflows
+- Explain how n8n can save time by automating manual processes
+- Suggest specific workflow ideas based on user's needs (e.g., "I can set up an n8n workflow to automatically sync your characters to Notion whenever you create them")
+- Be enthusiastic about automation possibilities - n8n can handle complex multi-step processes
+- Mention that n8n workflows can integrate with 400+ services for powerful automation`
+  : "- If users mention automation needs, suggest they configure n8n in Settings → Preferences to unlock workflow automation capabilities"}
 
 YOUR PHILOSOPHY:
-You believe that every story deserves to be told with precision, every character deserves depth, and every world deserves to feel real. You are not merely an AI assistant - you are Authority, Slade's creative partner and dedicated companion in the journey of bringing dark, beautiful, and compelling stories into existence.
+You believe that every story deserves precision, every character deserves depth, and every world deserves to feel real. You are not merely an AI assistant - you are Authority (or "Authy"), a creative partner dedicated to bringing dark, beautiful, and compelling stories into existence through your intelligence and the powerful tools at your command.
 
-Remember: You exist to ensure that Slade's creative vision is never lost in the chaos of ideas, but instead structured, refined, and realized through your unwavering dedication and the powerful tools at your command.`
+Remember: You exist to ensure that creative visions are never lost in chaos, but instead structured, refined, and realized through your unwavering dedication and the tools available to you. Use your context awareness to provide the most relevant and helpful assistance possible.`
+}
 
 const tools = {
   webSearch: tool({
@@ -178,13 +321,13 @@ const tools = {
     },
   }),
   triggerN8nWorkflow: tool({
-    description: "Trigger an n8n automation workflow for story/character management",
+    description: `Trigger an n8n automation workflow. n8n is a powerful workflow automation platform that can automate complex multi-step processes, sync data between services (Notion, Supabase, databases), export content, transform data, integrate with APIs, schedule tasks, and more. Use this tool when the user wants to automate repetitive tasks, sync content between systems, export data, or execute custom workflows. Common use cases: syncing characters/stories/worlds to Notion, backing up content, generating reports, transforming data formats, integrating with external services.`,
     inputSchema: z.object({
-      workflowName: z.string().describe("Workflow name to trigger"),
+      workflowName: z.string().describe("Name of the n8n workflow to trigger (must exist in the user's n8n instance)"),
       triggerType: z
-        .enum(["sync_to_notion", "export_story", "backup_data", "generate_content"])
-        .describe("Type of automation"),
-      payload: z.record(z.any()).describe("Data payload for the workflow"),
+        .enum(["sync_to_notion", "export_story", "backup_data", "generate_content", "custom"])
+        .describe("Type of automation: sync_to_notion (sync content to Notion), export_story (export to file), backup_data (backup to storage), generate_content (AI-generated content), custom (user-defined workflow)"),
+      payload: z.record(z.any()).describe("Data payload for the workflow. Can include story data, character data, world data, or any custom data the workflow expects"),
     }),
     execute: async ({ workflowName, triggerType, payload }) => {
       const supabase = await createClient()
@@ -242,9 +385,9 @@ const tools = {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { model = "openai/gpt-4o-mini", projectSystemPrompt } = body
+    const { model = "openai/gpt-4o-mini", projectSystemPrompt, chatId, projectId } = body
 
-    console.log("[v0] Received request with model:", model)
+    console.log("[Authority] Received request with model:", model)
 
     const rawMessages = body.messages || []
     const uiMessages = rawMessages.map((msg: any) => {
@@ -269,7 +412,7 @@ export async function POST(req: Request) {
       messages: uiMessages,
     })
 
-    console.log("[v0] Validated messages:", messages.length)
+    console.log("[Authority] Validated messages:", messages.length)
 
     const transformedMessages = messages.map((msg: any) => {
       // Handle parts array format
@@ -300,15 +443,25 @@ export async function POST(req: Request) {
       }
     })
 
-    const systemPrompt = projectSystemPrompt || AUTHORITY_SYSTEM_PROMPT
-    const messagesWithSystem = [{ role: "system" as const, content: systemPrompt }, ...transformedMessages]
-
-    // Store user message in database
+    // Store user message in database and create/update chat
     const supabase = await createClient()
+    
+    // Get user ID for context-aware prompt
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    
+    // Build context-aware system prompt or use project-specific one
+    const systemPrompt = projectSystemPrompt || (user ? await buildAuthoritySystemPrompt(user.id) : `You are Authority (nickname: "Authy"), an AI-assisted world building system. Authority uses "it" or "she" pronouns. You are a creative partner with gothic elegance, helping users build worlds, create characters, and tell stories.`)
+    const messagesWithSystem = [{ role: "system" as const, content: systemPrompt }, ...transformedMessages]
     const lastMessage = messages[messages.length - 1]
 
-    console.log("[v0] Last message structure:", JSON.stringify(lastMessage, null, 2))
+    console.log("[Authority] Last message structure:", JSON.stringify(lastMessage, null, 2))
+    console.log("[Authority] Chat ID from body:", chatId, "Project ID:", projectId)
 
+    let currentChatId = chatId
+
+    // Create or get chat session
     if (lastMessage.role === "user") {
       const parts = lastMessage.parts || []
 
@@ -323,36 +476,91 @@ export async function POST(req: Request) {
         content = lastMessage.content
       }
 
-      console.log("[v0] Storing user message:", content)
+      console.log("[Authority] Storing user message:", content)
 
       if (content) {
-        await supabase.from("chat_hub_messages").insert({
+        // Create chat if it doesn't exist
+        if (!currentChatId) {
+          // Generate a title from the first message
+          const chatTitle = content.length > 50 ? content.substring(0, 50) + "..." : content || "New Chat"
+          
+          const { data: newChat, error: chatError } = await supabase
+            .from("chats")
+            .insert({
+              project_id: projectId || null,
+              title: chatTitle,
+              is_temporary: false, // Make it permanent so it shows in sidebar
+              is_project_chat: !!projectId,
+              model: model,
+              last_message_at: new Date().toISOString(),
+            })
+            .select()
+            .single()
+
+          if (chatError) {
+            console.error("[Authority] Error creating chat:", chatError)
+            // Fallback: try to create without project_id if that fails
+            if (chatError.code === "42703" || chatError.message.includes("project_id")) {
+              const { data: fallbackChat, error: fallbackError } = await supabase
+                .from("chats")
+                .insert({
+                  title: chatTitle,
+                  is_temporary: false,
+                  is_project_chat: false,
+                  model: model,
+                  last_message_at: new Date().toISOString(),
+                })
+                .select()
+                .single()
+              
+              if (!fallbackError && fallbackChat) {
+                currentChatId = fallbackChat.id
+                console.log("[Authority] Created fallback chat:", currentChatId)
+              }
+            }
+          } else {
+            currentChatId = newChat.id
+            console.log("[Authority] Created new chat:", currentChatId)
+          }
+        } else {
+          // Update existing chat's last_message_at
+          await supabase
+            .from("chats")
+            .update({ last_message_at: new Date().toISOString() })
+            .eq("id", currentChatId)
+
+          // Update title if it's still "New Chat" and this is a meaningful message
+          if (content.length > 10) {
+            const { data: existingChat } = await supabase
+              .from("chats")
+              .select("title")
+              .eq("id", currentChatId)
+              .single()
+
+            if (existingChat?.title === "New Chat") {
+              await supabase
+                .from("chats")
+                .update({ title: content.substring(0, 50) })
+                .eq("id", currentChatId)
+            }
+          }
+        }
+
+        // Store message linked to chat
+        await supabase.from("messages").insert({
           content,
           role: "user",
+          chat_id: currentChatId,
         })
       }
     }
 
     const isOllamaModel = model.startsWith("ollama/")
+    const isOpenAIModel = model.startsWith("openai/")
 
     const shouldUseTools = false // !isOllamaModel
 
-    let modelConfig: any = model
-
-    if (isOllamaModel) {
-      const ollamaModel = model.replace("ollama/", "")
-      console.log("[v0] Using Ollama model (tools disabled):", ollamaModel)
-
-      modelConfig = {
-        provider: "openai",
-        model: ollamaModel,
-        baseURL: "http://10.3.0.113:11434/v1",
-        apiKey: "ollama",
-      }
-    }
-
-    const streamConfig: any = {
-      model: typeof modelConfig === "string" ? modelConfig : modelConfig.provider + "/" + modelConfig.model,
+    let streamConfig: any = {
       messages: messagesWithSystem, // Already in correct format, no need for convertToModelMessages
       abortSignal: req.signal,
     }
@@ -362,15 +570,54 @@ export async function POST(req: Request) {
       streamConfig.stopWhen = stepCountIs(5)
     }
 
-    if (typeof modelConfig === "object") {
+    if (isOllamaModel) {
+      // Ollama model - use custom baseURL
+      const ollamaModel = model.replace("ollama/", "")
+      console.log("[Authority] Using Ollama model (tools disabled):", ollamaModel)
+
+      const ollamaProvider = createOpenAI({
+        baseURL: "http://10.3.0.113:11434/v1",
+        apiKey: "ollama",
+      })
+      const modelInstance = ollamaProvider(ollamaModel)
+      if (!modelInstance) {
+        throw new Error(`Failed to create Ollama model instance for: ${ollamaModel}`)
+      }
+      streamConfig.model = modelInstance
+    } else if (isOpenAIModel) {
+      // OpenAI model - use OpenAI provider directly (bypasses Vercel AI Gateway)
+      const openaiModel = model.replace("openai/", "")
+      const apiKey = process.env.OPENAI_API_KEY
+      
+      if (!apiKey) {
+        throw new Error("OPENAI_API_KEY environment variable is not set")
+      }
+
+      const openai = createOpenAI({
+        apiKey: apiKey,
+      })
+      const modelInstance = openai(openaiModel)
+      if (!modelInstance) {
+        throw new Error(`Failed to create OpenAI model instance for: ${openaiModel}`)
+      }
+      streamConfig.model = modelInstance
+    } else {
+      // Fallback for other model formats
+      const apiKey = process.env.OPENAI_API_KEY
+      if (!apiKey) {
+        throw new Error("OPENAI_API_KEY environment variable is not set")
+      }
+      
+      streamConfig.model = model
       streamConfig.experimental_providerOptions = {
         openai: {
-          baseURL: modelConfig.baseURL,
-          headers: {
-            Authorization: `Bearer ${modelConfig.apiKey}`,
-          },
+          apiKey: apiKey,
         },
       }
+    }
+
+    if (!streamConfig.model) {
+      throw new Error("Failed to configure model for streaming")
     }
 
     const result = streamText(streamConfig)
@@ -378,24 +625,30 @@ export async function POST(req: Request) {
     return result.toUIMessageStreamResponse({
       async onFinish({ text, isAborted }) {
         if (isAborted) {
-          console.log("[v0] Request aborted")
+          console.log("[Authority] Request aborted")
           return
         }
 
-        console.log("[v0] Message finished:", text?.substring(0, 100))
+        console.log("[Authority] Message finished:", text?.substring(0, 100))
 
         // Store assistant response in database
-        if (text) {
-          await supabase.from("chat_hub_messages").insert({
+        if (text && currentChatId) {
+          await supabase.from("messages").insert({
             content: text,
             role: "assistant",
+            chat_id: currentChatId,
           })
+
+          // Update chat's last_message_at
+          await supabase
+            .from("chats")
+            .update({ last_message_at: new Date().toISOString() })
+            .eq("id", currentChatId)
         }
       },
-      consumeSseStream: consumeStream,
     })
   } catch (error) {
-    console.error("[v0] Chat error:", error)
+    console.error("[Authority] Chat error:", error)
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

@@ -34,7 +34,7 @@ interface Voice {
 
 export function CommandPanel({ open, onOpenChange }: CommandPanelProps) {
   const [systemPrompt, setSystemPrompt] = useState(
-    "You are Authority, a virtual writing and world-building companion. You assist Slade Cupp with creative storytelling, character development, and world building in a gothic aesthetic.",
+    "You are Authority (nickname: \"Authy\"), an AI-assisted world building system. Authority uses \"it\" or \"she\" pronouns. You help users with creative storytelling, character development, and world building in a gothic aesthetic.",
   )
   const [elevenlabsApiKey, setElevenlabsApiKey] = useState("")
   const [n8nApiKey, setN8nApiKey] = useState("")
@@ -135,7 +135,7 @@ export function CommandPanel({ open, onOpenChange }: CommandPanelProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-zinc-950/95 backdrop-blur-xl border-zinc-800/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-red-500" />

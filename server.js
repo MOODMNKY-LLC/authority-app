@@ -1,3 +1,9 @@
+// Disable TLS certificate verification for local development with self-signed certs
+// This is safe for local dev only - DO NOT use in production
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+}
+
 const { createServer } = require('https')
 const { parse } = require('url')
 const next = require('next')

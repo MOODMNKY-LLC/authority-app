@@ -23,6 +23,10 @@ export async function GET() {
     if (error) throw error
 
     if (!profile) {
+      // Check if this is the first user (will be auto-assigned admin by trigger)
+      const { count } = await supabase.from("user_profiles").select("*", { count: "exact", head: true })
+      const isFirstUser = (count || 0) === 0
+
       const { data: newProfile, error: insertError } = await supabase
         .from("user_profiles")
         .insert({
@@ -31,13 +35,18 @@ export async function GET() {
           display_name: user.email?.split("@")[0] || "User",
           avatar_url: null,
           bio: null,
+          role: isFirstUser ? "admin" : "pending", // First user gets admin, others get pending
         })
         .select()
         .single()
 
       if (insertError) {
-        console.error("[v0] Error creating default profile:", insertError)
+        console.error("[Authority] Error creating default profile:", insertError)
         return NextResponse.json({ profile: null })
+      }
+
+      if (isFirstUser) {
+        console.log("[Authority] ✅ First user automatically assigned admin role")
       }
 
       return NextResponse.json({ profile: newProfile })
@@ -45,7 +54,7 @@ export async function GET() {
 
     return NextResponse.json({ profile })
   } catch (error) {
-    console.error("[v0] Error fetching user profile:", error)
+    console.error("[Authority] Error fetching user profile:", error)
     return NextResponse.json({ profile: null })
   }
 }
@@ -72,7 +81,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ profile })
   } catch (error) {
-    console.error("[v0] Error updating user profile:", error)
+    console.error("[Authority] Error updating user profile:", error)
     return NextResponse.json({ error: "Failed to update user profile" }, { status: 500 })
   }
 }
