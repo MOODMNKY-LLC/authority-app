@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -57,11 +58,22 @@ export function NotionAuth() {
     <Card className="w-full border-red-900/30 bg-zinc-950/90 backdrop-blur-xl shadow-2xl">
       <CardHeader className="space-y-3 pb-8">
         <div className="flex flex-col items-center justify-center mb-2 gap-4">
-          <div className="relative">
-            <img
+          <div className="relative h-20 w-20">
+            <Image
               src="/assets/icons/authority-icon_no_background_upscaled.png"
               alt="Authority"
-              className="h-20 w-20 object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]"
+              width={80}
+              height={80}
+              className="object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]"
+              priority
+              unoptimized={false}
+              onError={(e) => {
+                // Fallback to SVG if PNG fails
+                const target = e.target as HTMLImageElement
+                if (!target.src.includes('.svg')) {
+                  target.src = '/assets/icons/authority-icon_no_background_upscaled.svg'
+                }
+              }}
             />
             <div className="absolute inset-0 bg-red-600/20 blur-2xl rounded-full -z-10" />
           </div>

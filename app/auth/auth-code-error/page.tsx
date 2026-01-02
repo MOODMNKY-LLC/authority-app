@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle } from "lucide-react"
@@ -20,11 +23,22 @@ export default function AuthCodeErrorPage() {
       <Card className="relative w-full max-w-md border-red-900/30 bg-zinc-950/90 backdrop-blur-xl shadow-2xl z-10">
         <CardHeader className="space-y-3 pb-4">
           <div className="flex flex-col items-center justify-center gap-3">
-            <div className="relative">
-              <img
+            <div className="relative h-16 w-16">
+              <Image
                 src="/assets/icons/authority-icon_no_background_upscaled.png"
                 alt="Authority"
-                className="h-16 w-16 object-contain opacity-50"
+                width={64}
+                height={64}
+                className="object-contain opacity-50"
+                priority
+                unoptimized={false}
+                onError={(e) => {
+                  // Fallback to SVG if PNG fails
+                  const target = e.target as HTMLImageElement
+                  if (!target.src.includes('.svg')) {
+                    target.src = '/assets/icons/authority-icon_no_background_upscaled.svg'
+                  }
+                }}
               />
               <AlertCircle className="absolute -top-1 -right-1 h-6 w-6 text-red-600" />
             </div>

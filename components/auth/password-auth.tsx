@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -70,11 +71,24 @@ export function PasswordAuth({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <div className="text-center mb-6">
           <div className="flex flex-col items-center gap-3 mb-4">
-            <img
-              src="/assets/icons/authority-icon_no_background_upscaled.png"
-              alt="Authority"
-              className="h-12 w-12 object-contain opacity-80"
-            />
+            <div className="relative h-12 w-12">
+              <Image
+                src="/assets/icons/authority-icon_no_background_upscaled.png"
+                alt="Authority"
+                width={48}
+                height={48}
+                className="object-contain opacity-80"
+                priority
+                unoptimized={false}
+                onError={(e) => {
+                  // Fallback to SVG if PNG fails
+                  const target = e.target as HTMLImageElement
+                  if (!target.src.includes('.svg')) {
+                    target.src = '/assets/icons/authority-icon_no_background_upscaled.svg'
+                  }
+                }}
+              />
+            </div>
             <h3 className="text-lg font-semibold text-zinc-200">Email & Password</h3>
           </div>
           <p className="text-sm text-zinc-500">Traditional authentication method</p>
