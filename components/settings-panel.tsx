@@ -244,10 +244,13 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-7xl h-[90vh] bg-zinc-950/95 backdrop-blur-xl rounded-xl border border-zinc-800/50 shadow-2xl overflow-hidden flex">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 md:p-4 touch-none">
+      <div 
+        className="w-full max-w-7xl h-[95vh] md:h-[90vh] bg-zinc-950/95 backdrop-blur-xl rounded-xl border border-zinc-800/50 shadow-2xl overflow-hidden flex flex-col md:flex-row"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Sidebar */}
-        <div className="w-64 bg-zinc-900/50 border-r border-zinc-800/50 flex flex-col backdrop-blur-md">
+        <div className="w-full md:w-64 bg-zinc-900/50 border-r-0 md:border-r border-zinc-800/50 border-b md:border-b-0 flex flex-col backdrop-blur-md">
           <div className="p-4 border-b border-zinc-800/50">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">

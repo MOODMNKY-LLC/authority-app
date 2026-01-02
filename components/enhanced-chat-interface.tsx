@@ -77,7 +77,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
-import { CommandPanel } from "@/components/command-panel"
+import { SettingsPanel } from "@/components/settings-panel"
 import { Card, CardContent } from "@/components/ui/card" // Imported CardContent
 import {
   Dialog,
@@ -90,15 +90,13 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/utils/supabase/client" // Assuming this path for Supabase client
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import rehypeRaw from "rehype-raw"
-import rehypeSanitize from "rehype-sanitize"
-// import remarkMath from "remark-math"
-// import rehypeKatex from "rehype-katex"
-// import "katex/dist/katex.min.css"
 import { AdminPanel } from "@/components/admin-panel" // Imported AdminPanel
 import { PWAInstaller } from "@/components/pwa-installer" // Added PWAInstaller import
+import { EnhancedMarkdown } from "@/components/enhanced-markdown"
+import { CollapsibleMessage } from "@/components/collapsible-message"
+import { MessageActions } from "@/components/message-actions"
+import { ScrollableMessageContent } from "@/components/scrollable-message-content"
+import { NotionVerificationBadge } from "@/components/notion-verification-badge"
 import { cn } from "@/lib/utils" // Imported cn for utility
 
 interface Message {
@@ -174,6 +172,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
   const inputRef = useRef<HTMLInputElement>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [readingMessageId, setReadingMessageId] = useState<string | null>(null)
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -191,7 +190,9 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
   const [availableModels, setAvailableModels] = useState<{ id: string; name: string; provider: string }[]>([])
   const [showModelSelector, setShowModelSelector] = useState(false)
   // Updated state to use the same name as in the updates
-  const [showCommandPanel, setShowCommandPanel] = useState(false)
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [isTemporary, setIsTemporary] = useState(false)
 
   // New state for ChatGPT layout
@@ -213,7 +214,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
   const [newProjectInstructions, setNewProjectInstructions] = useState("")
   const [selectedTools, setSelectedTools] = useState<string[]>([])
 
-  const [backgroundImage, setBackgroundImage] = useState("/authority-bg-16-9.jpg") // Default background
+  const [backgroundImage, setBackgroundImage] = useState("/assets/backgrounds/authority-bg-1.png") // Default background
 
   const [input, setInput] = useState("")
 
@@ -227,8 +228,6 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
   // Added separate state for Forge collapsible section
   const [isForgeExpanded, setIsForgeExpanded] = useState(true)
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true)
-
-  const [showAdminPanel, setShowAdminPanel] = useState(false)
 
   const [forgeInputs, setForgeInputs] = useState({
     characterName: "",
@@ -258,7 +257,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
   })
 
   const [tickerMessages, setTickerMessages] = useState<string[]>([
-    "Welcome to Authority - Your Gothic Writing Companion",
+    "Welcome to Authority - AI-Assisted World Building System",
     "New: Forge tools for character and world building",
     "Tip: Use Projects to organize your creative work",
   ])
@@ -277,6 +276,39 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [initialMessages])
+
+  // Load chats on mount
+  useEffect(() => {
+    loadChats()
+    checkAdminStatus()
+  }, [])
+
+  // Check if user is admin
+  const checkAdminStatus = async () => {
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setIsAdmin(false)
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single()
+
+      const isAdminUser = profile?.role === "admin"
+      setIsAdmin(isAdminUser)
+      console.log("[Authority] Admin status check:", { userId: user.id, role: profile?.role, isAdmin: isAdminUser })
+    } catch (error) {
+      console.error("[Authority] Error checking admin status:", error)
+      setIsAdmin(false)
+    }
+  }
 
   const loadUserProfile = async () => {
     try {
@@ -549,11 +581,11 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          project_id: null, // No project for normal chat
+          project_id: currentProject?.id || null,
           title: "New Chat",
-          is_temporary: isTemporary,
-          is_project_chat: false,
-          system_prompt: null,
+          is_temporary: false, // Make it permanent so it shows in sidebar
+          is_project_chat: !!currentProject,
+          system_prompt: currentProject?.system_prompt || null,
           model: selectedModel,
         }),
       })
@@ -563,12 +595,16 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
         setChats([newChat, ...chats])
         setCurrentChat(newChat)
         setCurrentChatId(newChat.id) // Set current chat ID
-        setCurrentProject(null) // Clear project when creating normal chat
-        setCurrentProjectId(null) // Clear project ID
+        if (!currentProject) {
+          setCurrentProject(null) // Clear project when creating normal chat
+          setCurrentProjectId(null) // Clear project ID
+        }
+        return newChat
       }
     } catch (error) {
       console.error("[v0] Error creating chat:", error)
     }
+    return null
   }
 
   // Handler for "New chat" button in sidebar
@@ -718,33 +754,29 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
       model: selectedModel,
       tools: selectedTools,
       projectId: currentProject?.id,
-      chatId: currentChat?.id,
+      chatId: currentChatId || currentChat?.id, // Use currentChatId state for real-time updates
       projectSystemPrompt: currentProject?.system_prompt,
     },
     transport: new DefaultChatTransport({
       url: "/api/chat",
     }),
     onFinish(message) {
-      console.log("[v0] Message finished:", message)
+      console.log("[Authority] Message finished:", message)
       // Update local messages state with the finished message
       setMessages((prevMessages) => [...prevMessages, message as Message])
 
-      if (currentChat?.is_temporary && !currentChat.is_project_chat) {
-        loadChats() // Reload if it was temporary to show it's now saved
-      }
-      // Update current chat ID if it was temporary and now saved
-      if (currentChat?.is_temporary && !currentChat.is_project_chat) {
-        loadChats().then(() => {
-          const savedChat = chats.find((c) => c.id === currentChat.id)
-          if (savedChat) {
-            setCurrentChat(savedChat)
-            setCurrentChatId(savedChat.id)
-          }
-        })
-      }
+      // Always reload chats to show newly created chats in sidebar
+      loadChats().then(() => {
+        // If we don't have a current chat but chats exist, select the most recent one
+        if (!currentChatId && chats.length > 0) {
+          const mostRecentChat = chats[0]
+          setCurrentChat(mostRecentChat)
+          setCurrentChatId(mostRecentChat.id)
+        }
+      })
     },
     onError(error) {
-      console.error("[v0] Chat error:", error)
+      console.error("[Authority] Chat error:", error)
       toast({
         title: "Chat Error",
         description: "An error occurred during the chat. Please try again.",
@@ -753,13 +785,18 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
     },
   })
 
-  const { sendMessage } = chatHook
+  const { sendMessage, status, messages: chatMessages } = chatHook
+  
+  // Use chatMessages from useChat hook for display (includes streaming updates)
+  // Fall back to local messages state only for initial load before chatHook is ready
+  // Once chatHook has messages, always use chatMessages (even if empty) to ensure streaming works
+  const displayMessages = chatMessages !== undefined ? chatMessages : messages
 
   useEffect(() => {
     if (autoScroll && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [messages, status, autoScroll])
+  }, [displayMessages, status, autoScroll])
 
   useEffect(() => {
     const container = messagesContainerRef.current
@@ -820,16 +857,22 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
     }
   }
 
-  const speakText = async (text: string) => {
+  const speakText = async (text: string, messageId?: string) => {
+    // If already speaking, stop current playback
     if (isSpeaking && audioRef.current) {
       audioRef.current.pause()
       audioRef.current = null
       setIsSpeaking(false)
-      return
+      setReadingMessageId(null)
+      // If clicking the same message, just stop
+      if (messageId === readingMessageId) {
+        return
+      }
     }
 
     try {
       setIsSpeaking(true)
+      setReadingMessageId(messageId || null)
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -847,20 +890,23 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
 
       audio.onended = () => {
         setIsSpeaking(false)
+        setReadingMessageId(null)
         URL.revokeObjectURL(audioUrl)
         audioRef.current = null
       }
 
       audio.onerror = () => {
         setIsSpeaking(false)
+        setReadingMessageId(null)
         URL.revokeObjectURL(audioUrl)
-        audio.current = null
+        audioRef.current = null
       }
 
       await audio.play()
     } catch (error) {
       console.error("[v0] TTS error:", error)
       setIsSpeaking(false)
+      setReadingMessageId(null)
       toast({
         title: "TTS Error",
         description: "Failed to generate speech. Check ElevenLabs API key in settings.",
@@ -905,10 +951,22 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
     }, // Added Supabase tool
   ]
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault()
 
     if ((!input?.trim() && attachedFiles.length === 0) || status !== "ready") return
+
+    // Create a chat if one doesn't exist BEFORE sending message
+    if (!currentChatId && !currentChat) {
+      const newChat = await createNewChat()
+      if (newChat) {
+        // Update state immediately so chatId is available
+        setCurrentChat(newChat)
+        setCurrentChatId(newChat.id)
+        // Force a small delay to ensure state is updated
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+    }
 
     let messageText = input || ""
 
@@ -1245,7 +1303,7 @@ Please create deep lore with historical events, mythologies, legends, and cultur
     <SidebarProvider>
       <div className="flex h-screen w-full overflow-hidden bg-black">
         <Sidebar collapsible="icon" className="border-r border-zinc-800">
-          <SidebarHeader className="border-b border-zinc-800 p-3 space-y-3">
+          <SidebarHeader className="border-b border-zinc-800/50 p-3 space-y-3 bg-zinc-950/80 backdrop-blur-xl">
             {/* Scrolling ticker text */}
             <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
               <div className="text-sm text-red-400 font-medium whitespace-nowrap animate-marquee">
@@ -1262,6 +1320,11 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+            </div>
+
+            {/* Notion Verification Badge */}
+            <div className="group-data-[collapsible=icon]:hidden">
+              <NotionVerificationBadge onOpenSettings={() => setShowSettingsPanel(true)} />
             </div>
           </SidebarHeader>
 
@@ -1290,7 +1353,7 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                   </SidebarMenuItem>
 
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => setShowCommandPanel(true)} className="gap-2">
+                    <SidebarMenuButton onClick={() => setShowSettingsPanel(true)} className="gap-2">
                       <Boxes className="h-4 w-4" />
                       <span>Apps</span>
                     </SidebarMenuButton>
@@ -1447,14 +1510,15 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                                 <span className="text-lg">{project.icon}</span>
                                 <span className="flex-1 truncate">{project.name}</span>
                               </SidebarMenuButton>
-                              <SidebarMenuAction showOnHover>
-                                <DropdownMenu>
+                              <DropdownMenu>
+                                <SidebarMenuAction showOnHover asChild>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-5 w-5">
                                       <MoreVertical className="h-3 w-3" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
+                                </SidebarMenuAction>
+                                <DropdownMenuContent align="end" className="w-48">
                                     <DropdownMenuItem onClick={() => handleRenameProject(project)}>
                                       <Edit className="h-4 w-4 mr-2" />
                                       Rename
@@ -1473,7 +1537,6 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
-                              </SidebarMenuAction>
                             </SidebarMenuItem>
                           ))}
 
@@ -1515,43 +1578,43 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                         <span className="flex-1 truncate">{chat.title}</span>
                         {chat.is_pinned && <Pin className="h-3 w-3 text-red-400" />}
                       </SidebarMenuButton>
-                      <SidebarMenuAction showOnHover>
-                        <DropdownMenu>
+                      <DropdownMenu>
+                        <SidebarMenuAction showOnHover asChild>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-5 w-5">
                               <MoreVertical className="h-3 w-3" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => handleShareChat(chat.id)}>
-                              <Share2 className="h-4 w-4 mr-2" />
-                              Share
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleRenameChat(chat)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleMoveToProject(chat.id)}>
-                              <FolderInput className="h-4 w-4 mr-2" />
-                              Move to project
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handlePinChat(chat.id, !chat.is_pinned)}>
-                              <Pin className="h-4 w-4 mr-2" />
-                              {chat.is_pinned ? "Unpin" : "Pin chat"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleArchiveChat(chat.id)}>
-                              <Archive className="h-4 w-4 mr-2" />
-                              Archive
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleDeleteChat(chat.id)} className="text-red-400">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </SidebarMenuAction>
+                        </SidebarMenuAction>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => handleShareChat(chat.id)}>
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRenameChat(chat)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleMoveToProject(chat.id)}>
+                            <FolderInput className="h-4 w-4 mr-2" />
+                            Move to project
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handlePinChat(chat.id, !chat.is_pinned)}>
+                            <Pin className="h-4 w-4 mr-2" />
+                            {chat.is_pinned ? "Unpin" : "Pin chat"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleArchiveChat(chat.id)}>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDeleteChat(chat.id)} className="text-red-400">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -1559,7 +1622,7 @@ Please create deep lore with historical events, mythologies, legends, and cultur
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-zinc-800 p-2">
+          <SidebarFooter className="border-t border-zinc-800/50 p-2 bg-zinc-950/80 backdrop-blur-xl">
             <SidebarMenu>
               <SidebarMenuItem>
                 <DropdownMenu>
@@ -1581,14 +1644,16 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="top" align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => setShowCommandPanel(true)}>
+                    <DropdownMenuItem onClick={() => setShowSettingsPanel(true)}>
                       <Settings className="h-4 w-4 mr-2" />
                       Settings & Personalization
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setShowAdminPanel(true)}>
-                      <Shield className="h-4 w-4 mr-2" />
-                      Admin Settings
-                    </DropdownMenuItem>
+                    {isAdmin && (
+                      <DropdownMenuItem onClick={() => setShowAdminPanel(true)}>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Admin Panel
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleSignOut()}>
                       <LogOut className="h-4 w-4 mr-2" />
@@ -1601,7 +1666,18 @@ Please create deep lore with historical events, mythologies, legends, and cultur
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex flex-col h-screen">
+        <SidebarInset className="flex flex-col h-screen relative">
+          {/* Background overlay with opacity */}
+          <div
+            className="fixed inset-0 z-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+              opacity: 0.12,
+            }}
+          />
           {/* Header with model selector and group chat/temporary chat buttons */}
           <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-zinc-800 bg-black/95 backdrop-blur px-4">
             <div className="flex items-center gap-2">
@@ -1661,18 +1737,17 @@ Please create deep lore with historical events, mythologies, legends, and cultur
             </div>
           </header>
 
-          {/* CHANGE: Removed background from main content area, let it be transparent and float on top */}
-          {/* Main Chat Area */}
+          {/* Main Chat Area with background overlay */}
           {/* Fixed scroll container - added overflow-y-auto to main element */}
-          <main className="flex-1 overflow-y-auto flex flex-col" ref={messagesContainerRef}>
+          <main className="flex-1 overflow-y-auto flex flex-col min-h-0 relative z-10" ref={messagesContainerRef}>
             {/* Improved centering with better spacing */}
-            {messages.length === 0 ? (
+            {displayMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-5 px-4">
                 {/* Authority Avatar */}
                 <div className="relative">
                   <div className="absolute inset-0 bg-red-600/20 blur-2xl rounded-full" />
-                  <Avatar className="h-20 w-20 border-2 border-red-600 relative">
-                    <AvatarImage src="/authority-anime-avatar.jpg" alt="Authority" />
+                    <Avatar className="h-20 w-20 border-2 border-red-600 relative bg-zinc-900">
+                    <AvatarImage src="/assets/icons/authority-icon_no_background_upscaled.svg" alt="Authority" />
                     <AvatarFallback className="bg-gray-900 text-red-600">A</AvatarFallback>
                   </Avatar>
                 </div>
@@ -1680,7 +1755,7 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                 <div className="space-y-2 text-center">
                   <h1 className="text-4xl font-bold text-white">Authority</h1>
                   <p className="text-base text-zinc-400">
-                    Your gothic writing companion for world-building, storytelling, and creative excellence.
+                    Authority (or "Authy") is your AI-assisted world building system for creative storytelling, character development, and immersive world-building.
                   </p>
                 </div>
 
@@ -1693,8 +1768,7 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                       onClick={() => {
                         console.log("[v0] Sending message:", prompt.text)
                         sendMessage({
-                          content: prompt.text,
-                          role: "user",
+                          text: prompt.text,
                         })
                       }}
                     >
@@ -1709,59 +1783,63 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                 </div>
               </div>
             ) : (
-              <div className="flex-1 px-4 py-6 space-y-4 max-w-5xl mx-auto w-full">
-                {messages.map((message, index) => {
+              <div className="flex-1 px-6 md:px-8 lg:px-12 py-6 space-y-4 max-w-6xl mx-auto w-full">
+                {displayMessages.map((message, index) => {
                   const isUser = message.role === "user"
                   // Corrected status check for streaming
-                  const isStreaming = status === "streaming" && index === messages.length - 1 && !isUser
+                  const isStreaming = status === "streaming" && index === displayMessages.length - 1 && !isUser
 
                   return (
                     <div
-                      key={message.id}
-                      className={cn("flex gap-3 items-start group", isUser ? "justify-end" : "justify-start")}
+                      key={message.id || `message-${index}`}
+                      className={cn("flex gap-3 items-start group w-full", isUser ? "justify-end" : "justify-start")}
                     >
                       {!isUser && (
-                        <Avatar className="h-7 w-7 border border-red-600/50 flex-shrink-0 mt-1">
-                          <AvatarImage src="/authority-anime-avatar.jpg" alt="Authority" />
+                        <Avatar className="h-7 w-7 border border-red-600/50 flex-shrink-0 mt-1 bg-zinc-900">
+                          <AvatarImage src="/assets/icons/authority-icon_no_background_upscaled.svg" alt="Authority" />
                           <AvatarFallback className="bg-gray-900 text-red-600 text-xs">A</AvatarFallback>
                         </Avatar>
                       )}
                       <div
                         className={cn(
-                          "max-w-[65%] rounded-2xl px-4 py-3 backdrop-blur-md transition-all",
+                          "max-w-[85%] md:max-w-[75%] lg:max-w-[70%] min-w-0 rounded-2xl px-5 py-4 backdrop-blur-md transition-all relative break-words",
+                          "shadow-lg shadow-black/20",
                           isUser
                             ? "bg-red-600/80 text-white border border-red-500/30"
                             : "bg-gray-900/60 text-gray-100 border border-gray-800/50",
                         )}
                       >
-                        <div
-                          className={cn(
-                            "prose prose-invert max-w-none",
-                            "prose-sm prose-p:my-1.5 prose-p:leading-relaxed",
-                            "prose-headings:text-gray-100 prose-headings:font-semibold prose-headings:mb-2 prose-headings:mt-3",
-                            "prose-h1:text-xl prose-h2:text-lg prose-h3:text-base",
-                            "prose-pre:bg-black/40 prose-pre:border prose-pre:border-gray-800 prose-pre:rounded-lg prose-pre:p-3 prose-pre:my-3",
-                            "prose-code:text-red-400 prose-code:bg-black/30 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono",
-                            "prose-pre:prose-code:bg-transparent prose-pre:prose-code:p-0 prose-pre:prose-code:text-gray-300",
-                            "prose-strong:text-gray-100 prose-strong:font-semibold",
-                            "prose-a:text-red-400 hover:prose-a:text-red-300 prose-a:no-underline hover:prose-a:underline",
-                            "prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5",
-                            "prose-blockquote:border-l-red-600 prose-blockquote:bg-gray-900/40 prose-blockquote:py-1 prose-blockquote:my-3",
-                            "prose-table:border-collapse prose-table:w-full prose-table:my-3",
-                            "prose-th:bg-gray-900/60 prose-th:border prose-th:border-gray-800 prose-th:px-3 prose-th:py-2",
-                            "prose-td:border prose-td:border-gray-800 prose-td:px-3 prose-td:py-2",
-                            "prose-hr:border-gray-800 prose-hr:my-4",
-                          )}
-                        >
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-                            {typeof message.content === "string"
-                              ? message.content
-                              : message.parts?.map((p: any) => (p.type === "text" ? p.text : "")).join("") || ""}
-                          </ReactMarkdown>
+                        <ScrollableMessageContent maxHeight={600} className="pr-1" variant={isUser ? "user" : "assistant"}>
+                          <EnhancedMarkdown
+                            content={
+                              typeof (message as any).content === "string"
+                                ? (message as any).content
+                                : (message as any).parts
+                                  ?.filter((p: any) => p.type === "text")
+                                  .map((p: any) => p.text)
+                                  .join("") || ""
+                            }
+                          />
                           {isStreaming && (
                             <span className="inline-block w-1.5 h-4 bg-red-500 ml-1 animate-pulse align-middle" />
                           )}
-                        </div>
+                        </ScrollableMessageContent>
+                        {!isUser && (
+                          <MessageActions
+                            messageId={message.id || `message-${index}`}
+                            messageContent={
+                              typeof (message as any).content === "string"
+                                ? (message as any).content
+                                : (message as any).parts
+                                  ?.filter((p: any) => p.type === "text")
+                                  .map((p: any) => p.text)
+                                  .join("") || ""
+                            }
+                            onReadAloud={(text) => speakText(text, message.id || `message-${index}`)}
+                            isReading={readingMessageId === (message.id || `message-${index}`)}
+                            className="mt-2"
+                          />
+                        )}
                       </div>
                       {isUser && (
                         <Avatar className="h-7 w-7 border border-gray-700/50 flex-shrink-0 mt-1">
@@ -1779,10 +1857,15 @@ Please create deep lore with historical events, mythologies, legends, and cultur
             )}
           </main>
 
-          {/* Chat Input - Centered when no messages, bottom when chatting */}
-          {/* CHANGE: Adjusted positioning to be closer to centered welcome content */}
-          <div className={`${messages.length === 0 ? "absolute bottom-24 left-0 right-0" : "mt-auto"} p-4`}>
-            <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto w-full">
+          {/* Chat Input - Floating and seamless */}
+          <div
+            className={cn(
+              displayMessages.length === 0 ? "absolute bottom-24 left-0 right-0" : "mt-auto",
+              "p-4 backdrop-blur-xl bg-black/10 transition-all duration-300",
+              "border-t border-transparent",
+            )}
+          >
+            <form onSubmit={handleSendMessage} className="max-w-6xl mx-auto w-full px-6 md:px-8 lg:px-12">
               <div className="flex items-end gap-2">
                 <DropdownMenu open={showToolsMenu} onOpenChange={setShowToolsMenu}>
                   <DropdownMenuTrigger asChild>
@@ -1898,7 +1981,7 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Message Authority..."
-                    className="pr-24 bg-zinc-900 border-zinc-800 text-white h-12 rounded-full"
+                    className="pr-24 bg-zinc-900 border-zinc-800 text-white h-12 rounded-full text-base md:text-sm"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault()
@@ -1906,6 +1989,11 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                       }
                     }}
                     disabled={status === "streaming"}
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
                   />
 
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -2050,14 +2138,15 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                   <span className="text-lg">{project.icon}</span>
                   <span className="flex-1 truncate">{project.name}</span>
                 </SidebarMenuButton>
-                <SidebarMenuAction showOnHover>
-                  <DropdownMenu>
+                <DropdownMenu>
+                  <SidebarMenuAction showOnHover asChild>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-5 w-5">
                         <MoreVertical className="h-3 w-3" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                  </SidebarMenuAction>
+                  <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem onClick={() => handleRenameProject(project)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Rename
@@ -2073,7 +2162,6 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </SidebarMenuAction>
               </SidebarMenuItem>
             ))}
             {projects.length === 0 && (
@@ -2410,8 +2498,8 @@ Please create deep lore with historical events, mythologies, legends, and cultur
         </DialogContent>
       </Dialog>
 
-      <CommandPanel open={showCommandPanel} onOpenChange={setShowCommandPanel} />
-      <AdminPanel open={showAdminPanel} onOpenChange={setShowAdminPanel} />
+      <SettingsPanel open={showSettingsPanel} onOpenChange={setShowSettingsPanel} />
+      {isAdmin && <AdminPanel open={showAdminPanel} onOpenChange={setShowAdminPanel} />}
     </SidebarProvider>
   )
 }

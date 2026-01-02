@@ -155,7 +155,11 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Mobile touch optimizations */
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
   }
+  
   body {
     @apply bg-background text-foreground;
     /* Add full-screen background image to body */
@@ -164,6 +168,44 @@
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
+    
+    /* Mobile optimizations */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevent text size adjustment on iOS */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Safe area support for iOS notches */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Ensure minimum touch target size (44x44px for accessibility) */
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation; /* Remove double-tap zoom delay */
+  }
+  
+  /* Mobile-specific input improvements */
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Prevent zoom on iOS when focusing inputs */
+    touch-action: manipulation;
+  }
+  
+  /* Improve scrolling on mobile */
+  .scrollable,
+  [data-scrollable] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain; /* Prevent overscroll bounce */
   }
 
   /* Adding invisible scrollbars */
@@ -303,5 +345,56 @@
 
   .animate-marquee {
     animation: marquee 20s linear infinite;
+  }
+  
+  /* Mobile breakpoint utilities */
+  @media (max-width: 768px) {
+    /* Hide desktop-only elements */
+    .desktop-only {
+      display: none !important;
+    }
+    
+    /* Improve spacing on mobile */
+    .mobile-spacing {
+      padding: 1rem;
+    }
+    
+    /* Full-width on mobile */
+    .mobile-full {
+      width: 100%;
+      max-width: 100%;
+    }
+    
+    /* Stack elements vertically on mobile */
+    .mobile-stack {
+      flex-direction: column;
+    }
+    
+    /* Prevent horizontal scroll on mobile */
+    body {
+      overflow-x: hidden;
+    }
+    
+    /* Improve touch targets on mobile */
+    button,
+    a,
+    [role="button"] {
+      padding: 0.75rem 1rem;
+    }
+  }
+  
+  /* Tablet and up */
+  @media (min-width: 769px) {
+    .mobile-only {
+      display: none !important;
+    }
+  }
+  
+  /* PWA standalone mode adjustments */
+  @media (display-mode: standalone) {
+    body {
+      /* Additional padding for standalone mode */
+      padding-top: calc(env(safe-area-inset-top) + 0.5rem);
+    }
   }
 }

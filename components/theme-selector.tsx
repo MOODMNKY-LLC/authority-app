@@ -136,7 +136,7 @@ export function ThemeSelector({ currentTheme, onThemeChange }: ThemeSelectorProp
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
       {themes.map((theme) => {
         const Icon = theme.icon
         const isSelected = selectedTheme === theme.id
@@ -147,10 +147,10 @@ export function ThemeSelector({ currentTheme, onThemeChange }: ThemeSelectorProp
             onClick={() => handleThemeSelect(theme.id)}
             disabled={saving}
             className={cn(
-              "relative p-4 rounded-lg border-2 transition-all text-left group",
+              "relative p-4 rounded-lg border-2 transition-all text-left group min-h-[80px] touch-manipulation",
               isSelected
                 ? "border-red-500 ring-2 ring-red-500/50 bg-red-900/20"
-                : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/50",
+                : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 active:bg-zinc-800",
               saving && "opacity-50 cursor-not-allowed",
             )}
           >

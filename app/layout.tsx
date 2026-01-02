@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeInitializer } from "@/components/theme-initializer"
+import { PWAInstaller } from "@/components/pwa-installer"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -53,9 +54,11 @@ export const metadata: Metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5, // Allow zoom for accessibility
+  userScalable: true, // Allow zoom for accessibility
   viewportFit: "cover" as const,
+  // Prevent zoom on input focus (handled via CSS font-size: 16px)
+  interactiveWidget: "resizes-content" as const,
 }
 
 export default function RootLayout({
@@ -82,6 +85,7 @@ export default function RootLayout({
         >
           <ThemeInitializer />
           {children}
+          <PWAInstaller />
         </ThemeProvider>
         <Analytics />
       </body>

@@ -189,7 +189,10 @@ export function BackgroundUpload({ onUploadComplete, maxSizeMB = 10 }: Backgroun
             </div>
             <div>
               <p className="text-sm font-medium text-white mb-1">
-                Drag and drop an image here, or click to browse
+                <span className="hidden md:inline">Drag and drop an image here, or </span>
+                <span className="md:hidden">Tap to </span>
+                <span className="md:hidden">select an image</span>
+                <span className="hidden md:inline">click to browse</span>
               </p>
               <p className="text-xs text-zinc-500">
                 Supports JPEG, PNG, WebP, GIF (max {maxSizeMB}MB)
@@ -200,7 +203,7 @@ export function BackgroundUpload({ onUploadComplete, maxSizeMB = 10 }: Backgroun
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="gap-2"
+              className="gap-2 min-h-[44px] touch-manipulation"
             >
               <Upload className="h-4 w-4" />
               Choose File

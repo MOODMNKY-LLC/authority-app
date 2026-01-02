@@ -188,9 +188,9 @@ export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBa
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="outline" className={badgeClasses} onClick={handleClick}>
+        <Badge variant="outline" className={cn(badgeClasses, "min-h-[32px] touch-manipulation")} onClick={handleClick}>
           {getIcon()}
-          {badgeText}
+          <span className="text-xs md:text-sm">{badgeText}</span>
         </Badge>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-xs bg-zinc-950/95 backdrop-blur-xl border border-zinc-800/50 text-zinc-100">
