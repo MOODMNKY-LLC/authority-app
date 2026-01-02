@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CheckCircle2, XCircle, AlertCircle, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -35,6 +35,7 @@ interface NotionVerificationBadgeProps {
 export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBadgeProps = {}) {
   const [status, setStatus] = useState<VerifyDatabasesResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const checkVerification = async () => {
     setLoading(true)
@@ -77,11 +78,35 @@ export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBa
   }
 
   useEffect(() => {
+    // Initial check
     checkVerification()
-    // Refresh every 60 seconds to keep status updated
-    const interval = setInterval(checkVerification, 60000)
-    return () => clearInterval(interval)
+    
+    // Set up interval - clear any existing interval first
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+    }
+    
+    // Refresh every 60 seconds
+    intervalRef.current = setInterval(() => {
+      checkVerification()
+    }, 60000)
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
   }, [])
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    // Manual refresh on click
+    checkVerification()
+    // Optionally open settings after a short delay
+    setTimeout(() => {
+      onOpenSettings?.()
+    }, 100)
+  }
 
   if (loading) {
     return (
@@ -137,13 +162,13 @@ export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBa
 
   const getBadgeText = () => {
     if (isFullySynced) {
-      return `Notion • ${accessibleCount} DB${accessibleCount !== 1 ? "s" : ""}`
+      return "Notion - Fully Synced"
     }
-    if (isConnected && accessibleCount > 0) {
-      return `Notion • ${accessibleCount}/${totalCount} DBs`
+    if (hasMissing) {
+      return `Partially Synced (${inaccessibleCount} missing)`
     }
-    if (isConnected && accessibleCount === 0) {
-      return "Notion • No DBs"
+    if (isConnectionFailed) {
+      return "Sync Failure"
     }
     return "Notion Setup"
   }
@@ -163,7 +188,7 @@ export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBa
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="outline" className={badgeClasses} onClick={() => onOpenSettings?.()}>
+        <Badge variant="outline" className={badgeClasses} onClick={handleClick}>
           {getIcon()}
           {badgeText}
         </Badge>
@@ -172,62 +197,66 @@ export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBa
         <div className="space-y-2">
           <p className="font-semibold">
             {isFullySynced
-              ? "✓ Notion Fully Operational"
+              ? "✓ Notion - Fully Synced"
               : hasMissing
-                ? "⚠ Some Databases Inaccessible"
-                : "✗ Notion Connection Failed"}
-          </p>
-          <p className="text-sm text-zinc-300">
-            {isFullySynced
-              ? `All ${accessibleCount} databases verified and accessible`
-              : hasMissing
-                ? `${accessibleCount} of ${totalCount} databases accessible`
-                : status?.error || "Notion not connected. Connect via OAuth or add integration token."}
+                ? "⚠ Partially Synced - Databases Missing"
+                : "✗ Sync Failure"}
           </p>
           
-          {isConnected && (
+          {isFullySynced && (
+            <p className="text-sm text-green-300">
+              All {accessibleCount} databases verified and accessible. Notion integration is fully operational.
+            </p>
+          )}
+          
+          {hasMissing && (
+            <div className="space-y-2">
+              <p className="text-sm text-yellow-300">
+                {accessibleCount} of {totalCount} databases are synced. {inaccessibleCount} database{inaccessibleCount !== 1 ? 's' : ''} missing.
+              </p>
+              <div className="mt-2">
+                <p className="text-xs font-semibold mb-1 text-yellow-400">
+                  Missing Databases ({inaccessibleDatabases.length}):
+                </p>
+                <ul className="text-xs list-disc list-inside space-y-0.5 text-zinc-300 max-h-32 overflow-y-auto">
+                  {inaccessibleDatabases.map((db) => (
+                    <li key={db.name} title={db.error}>
+                      {db.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="text-xs text-yellow-400 mt-2">
+                💡 <strong>Fix:</strong> Go to Settings → Notion and click "Sync Databases" to resync missing databases.
+              </p>
+            </div>
+          )}
+          
+          {isConnectionFailed && (
+            <div className="space-y-2">
+              <p className="text-sm text-red-300">
+                {status?.error || "Notion connection failed. Unable to verify database sync status."}
+              </p>
+              <div className="text-xs text-red-400 mt-2 p-2 bg-red-950/20 rounded border border-red-800/50">
+                <p className="font-semibold mb-1">To fix sync failure:</p>
+                <ol className="list-decimal list-inside space-y-1 text-zinc-300">
+                  <li>Go to Settings → Notion</li>
+                  <li>Verify your Notion OAuth connection or integration token</li>
+                  <li>Click "Sync Databases" to refresh database connections</li>
+                  <li>Ensure all required databases exist in your Notion workspace</li>
+                </ol>
+              </div>
+            </div>
+          )}
+          
+          {isConnected && !isConnectionFailed && (
             <div className="text-xs text-zinc-400">
               Connection: Active • Verified via API ping
             </div>
           )}
-
-          {isFullySynced && accessibleCount > 0 && (
-            <div className="mt-2">
-              <p className="text-xs font-semibold mb-1 text-green-400">All {accessibleCount} Databases Accessible:</p>
-              <ul className="text-xs list-disc list-inside space-y-0.5 max-h-32 overflow-y-auto text-zinc-300">
-                {accessibleDatabases.slice(0, 10).map((db) => (
-                  <li key={db.name}>{db.name}</li>
-                ))}
-                {accessibleCount > 10 && <li className="text-zinc-500">...and {accessibleCount - 10} more</li>}
-              </ul>
-            </div>
-          )}
-          
-          {hasMissing && inaccessibleDatabases.length > 0 && (
-            <div className="mt-2">
-              <p className="text-xs font-semibold mb-1 text-yellow-400">
-                Inaccessible Databases ({inaccessibleDatabases.length}):
-              </p>
-              <ul className="text-xs list-disc list-inside space-y-0.5 text-zinc-300">
-                {inaccessibleDatabases.slice(0, 5).map((db) => (
-                  <li key={db.name} title={db.error}>
-                    {db.name}
-                    {db.error && <span className="text-zinc-500 ml-1">({db.error.substring(0, 30)}...)</span>}
-                  </li>
-                ))}
-                {inaccessibleDatabases.length > 5 && <li className="text-zinc-500">...and {inaccessibleDatabases.length - 5} more</li>}
-              </ul>
-            </div>
-          )}
-          
-          {status?.error && (
-            <div className="text-xs text-red-400 mt-2 p-2 bg-red-950/20 rounded border border-red-800/50">
-              <strong>Error:</strong> {status.error}
-            </div>
-          )}
           
           <p className="text-xs text-zinc-400 mt-2 pt-2 border-t border-zinc-700">
-            Status checked every 60 seconds • Click to open Settings
+            Auto-refreshes every 60 seconds • Click to refresh now or open Settings
           </p>
         </div>
       </TooltipContent>
