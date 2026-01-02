@@ -1,0 +1,8 @@
+{
+  "project_id": "wfzcuaessqrdzoczjbrz",
+  "project_ref": "wfzcuaessqrdzoczjbrz",
+  "organization_id": "",
+  "database_password": "MOODMNKY1088",
+  "db_url": "postgresql://postgres:MOODMNKY1088@db.wfzcuaessqrdzoczjbrz.supabase.co:5432/postgres",
+  "api_url": "https://wfzcuaessqrdzoczjbrz.supabase.co"
+}
