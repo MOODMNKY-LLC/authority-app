@@ -1,85 +1,97 @@
 {
-    "inputs": [
-      {
-        "type": "promptString",
-        "id": "github_token",
-        "description": "GitHub Personal Access Token",
-        "password": true
-      }
-    ],
-    "mcpServers": {
-      "notion-authority": {
-        "command": "docker",
-        "args": [
-          "run",
-          "--rm",
-          "-i",
-          "--name",
-          "notion-authority",
-          "-e", "OPENAPI_MCP_HEADERS",
-          "mcp/notion"
-        ],
-        "env": {
-          "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer ntn_h87200563322kIxmXHtz1C2dKPwuAnsja69XIXeRGtdeTT\",\"Notion-Version\":\"2022-06-28\"}"
-        }
-      },
-      "@21st-dev/magic": {
-        "command": "npx",
-        "args": ["-y", "@21st-dev/magic@latest", "API_KEY=\"ccb5589f1c59f4535a74c14d14d75fdc02f69f571344fdc47b8cda007f9420f2\""]
-      },
-      "filesystem": {
-        "command": "docker",
-        "args": [
-          "run",
-          "--rm",
-          "-i",
-          "--name", "filesystem",
-          "-v",
-          "/root/apps:/mnt/shared",
-          "mcp/filesystem",
-          "/mnt/shared"
-        ]
-      },
-      "n8n-mcp-server": {
-        "command": "cmd",
-        "args": [
-          "/c",
-          "npx",
-          "-y",
-          "@smithery/cli@latest",
-          "run",
-          "@guinness77/n8n-mcp-server",
-          "--key",
-          "55f31bd8-abde-45ee-8e49-3340115cbdd0"
-        ],
-        "env": {
-          "N8N_HOST": "https://n8n-dev.moodmnky.com",
-          "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNTk2MmI0OS1kZTljLTRhN2YtOWU4Zi01ZjY3Nzk1MjIxYTYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzQ4NzMyNjA1fQ.Ine-vGPmq9uAoVXYF255O7OAhMGiMjeAaUd2jARd6EI"
-        }
-      },
-      "memory": {
-        "command": "docker",
-        "args": [
-          "run",
-          "-i",
-          "--rm",
-          "--name",
-          "memory",
-          "mcp/memory"
-        ]
-      },
-      "@magicuidesign/mcp": {
-        "command": "cmd",
-        "args": [
-          "/c",
-          "npx",
-          "-y",
-          "@magicuidesign/mcp@latest"
-        ]
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "github_token",
+      "description": "GitHub Personal Access Token",
+      "password": true
+    }
+  ],
+  "mcpServers": {
+    "notion-authority": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "notion-authority",
+        "-e",
+        "OPENAPI_MCP_HEADERS",
+        "mcp/notion"
+      ],
+      "env": {
+        "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer ntn_h87200563322kIxmXHtz1C2dKPwuAnsja69XIXeRGtdeTT\",\"Notion-Version\":\"2022-06-28\"}"
       }
     },
-    "registries": {
-      "@acme": "https://acme.com/r/{name}.json"
+    "@21st-dev/magic": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@21st-dev/magic@latest",
+        "API_KEY=\"ccb5589f1c59f4535a74c14d14d75fdc02f69f571344fdc47b8cda007f9420f2\""
+      ]
+    },
+    "filesystem": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--name",
+        "filesystem",
+        "-v",
+        "/root/apps:/mnt/shared",
+        "mcp/filesystem",
+        "/mnt/shared"
+      ]
+    },
+    "n8n-mcp-server": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@guinness77/n8n-mcp-server",
+        "--key",
+        "55f31bd8-abde-45ee-8e49-3340115cbdd0"
+      ],
+      "env": {
+        "N8N_HOST": "https://n8n-dev.moodmnky.com",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNTk2MmI0OS1kZTljLTRhN2YtOWU4Zi01ZjY3Nzk1MjIxYTYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzQ4NzMyNjA1fQ.Ine-vGPmq9uAoVXYF255O7OAhMGiMjeAaUd2jARd6EI"
+      }
+    },
+    "memory": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--name",
+        "memory",
+        "mcp/memory"
+      ]
+    },
+    "@magicuidesign/mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@magicuidesign/mcp@latest"
+      ]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
     }
+  },
+  "registries": {
+    "@acme": "https://acme.com/r/{name}.json"
   }
-  
+}

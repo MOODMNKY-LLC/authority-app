@@ -97,6 +97,7 @@ import { CollapsibleMessage } from "@/components/collapsible-message"
 import { MessageActions } from "@/components/message-actions"
 import { ScrollableMessageContent } from "@/components/scrollable-message-content"
 import { NotionVerificationBadge } from "@/components/notion-verification-badge"
+import { ImageGallery } from "@/components/image-gallery"
 import { cn } from "@/lib/utils" // Imported cn for utility
 
 interface Message {
@@ -2176,28 +2177,12 @@ Please create deep lore with historical events, mythologies, legends, and cultur
         </DialogContent>
       </Dialog>
 
-      {/* Image Gallery Dialog */}
-      <Dialog open={showImageGallery} onOpenChange={setShowImageGallery}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-zinc-900 border-zinc-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">Image Gallery</DialogTitle>
-            <DialogDescription>All images generated in this project</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {generatedImages.map((image) => (
-              <Card key={image.id} className="overflow-hidden group relative bg-zinc-800 border-zinc-700">
-                <img src={image.url || "/placeholder.svg"} alt={image.prompt} className="w-full h-48 object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <p className="text-xs text-white p-2 text-center">{image.prompt}</p>
-                </div>
-              </Card>
-            ))}
-            {generatedImages.length === 0 && (
-              <div className="col-span-full text-center py-12 text-muted-foreground">No images generated yet</div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Enhanced Image Gallery */}
+      <ImageGallery 
+        open={showImageGallery} 
+        onOpenChange={setShowImageGallery}
+        projectId={currentProject?.id}
+      />
 
       <Dialog open={showForge} onOpenChange={setShowForge}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-zinc-950 border-red-900">
