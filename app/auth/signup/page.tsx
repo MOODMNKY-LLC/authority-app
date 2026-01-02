@@ -14,8 +14,18 @@ export default async function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 via-purple-950 to-gray-950 p-4">
-      <div className="w-full max-w-md space-y-4">
+    <div
+      className="min-h-screen flex items-center justify-center bg-black p-4"
+      style={{
+        backgroundImage: "url('/assets/backgrounds/authority-bg-1.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      <div className="absolute inset-0 bg-black/60" />
+
+      <div className="relative w-full max-w-md z-10 space-y-4">
         <PasswordAuth />
         <SocialAuth />
       </div>

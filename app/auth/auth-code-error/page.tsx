@@ -19,8 +19,15 @@ export default function AuthCodeErrorPage() {
 
       <Card className="relative w-full max-w-md border-red-900/30 bg-zinc-950/90 backdrop-blur-xl shadow-2xl z-10">
         <CardHeader className="space-y-3 pb-4">
-          <div className="flex items-center justify-center gap-3">
-            <AlertCircle className="h-8 w-8 text-red-600" />
+          <div className="flex flex-col items-center justify-center gap-3">
+            <div className="relative">
+              <img
+                src="/assets/icons/authority-icon_no_background_upscaled.png"
+                alt="Authority"
+                className="h-16 w-16 object-contain opacity-50"
+              />
+              <AlertCircle className="absolute -top-1 -right-1 h-6 w-6 text-red-600" />
+            </div>
             <CardTitle className="text-2xl text-center text-white font-semibold">Authentication Error</CardTitle>
           </div>
           <CardDescription className="text-center text-zinc-400">

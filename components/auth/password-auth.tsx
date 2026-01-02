@@ -68,8 +68,15 @@ export function PasswordAuth({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`space-y-4 ${compact ? "" : "w-full max-w-md"}`}>
       {!compact && (
-        <div className="text-center mb-4">
-          <h3 className="text-lg font-semibold text-zinc-200">Email & Password</h3>
+        <div className="text-center mb-6">
+          <div className="flex flex-col items-center gap-3 mb-4">
+            <img
+              src="/assets/icons/authority-icon_no_background_upscaled.png"
+              alt="Authority"
+              className="h-12 w-12 object-contain opacity-80"
+            />
+            <h3 className="text-lg font-semibold text-zinc-200">Email & Password</h3>
+          </div>
           <p className="text-sm text-zinc-500">Traditional authentication method</p>
         </div>
       )}
