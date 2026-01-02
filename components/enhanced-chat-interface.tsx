@@ -98,6 +98,7 @@ import { MessageActions } from "@/components/message-actions"
 import { ScrollableMessageContent } from "@/components/scrollable-message-content"
 import { NotionVerificationBadge } from "@/components/notion-verification-badge"
 import { ImageGallery } from "@/components/image-gallery"
+import { ForgeDatabasePanel } from "@/components/forge-database-panel"
 import { cn } from "@/lib/utils" // Imported cn for utility
 
 interface Message {
@@ -2212,6 +2213,17 @@ Please create deep lore with historical events, mythologies, legends, and cultur
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
+            {/* Database Linking Panel */}
+            {activeForgeBuilder && (
+              <ForgeDatabasePanel
+                forgeType={activeForgeBuilder}
+                forgeData={forgeInputs}
+                onLinkComplete={(notionPageId, databaseId) => {
+                  console.log("[Authority] Forge content linked to Notion:", { notionPageId, databaseId })
+                }}
+              />
+            )}
+
             {activeForgeBuilder === "character" && (
               <div className="space-y-4">
                 <div className="p-4 bg-zinc-900 rounded-lg border border-red-900/50">
