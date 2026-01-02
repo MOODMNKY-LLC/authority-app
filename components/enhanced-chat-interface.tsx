@@ -270,6 +270,8 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
 
   const [micPermissionGranted, setMicPermissionGranted] = useState(false)
 
+  const [messages, setMessages] = useState<Message[]>(initialMessages) // Keep track of messages locally
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -665,6 +667,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
         // Assuming initialMessages is used to populate the chat history
         // This might need a more sophisticated way to manage chat history display
         console.log(`[v0] Loaded messages for chat ${chatId}`, messages)
+        setMessages(messages) // Set the loaded messages
         // For now, let's just log and assume the useChat hook will be re-initialized or updated
       } else {
         console.error("[v0] Failed to load chat messages", response.status)
@@ -692,8 +695,10 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
         },
         (payload) => {
           console.log("[v0] New message received via WebSocket:", payload)
-          // The useChat hook handles message updates automatically
-          // but we can add additional handling here if needed
+          // Update local messages state
+          if (payload.new) {
+            setMessages((prevMessages) => [...prevMessages, payload.new as Message])
+          }
         },
       )
       .subscribe()
@@ -704,7 +709,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
   }, [currentChatId])
 
   const chatHook = useChat({
-    initialMessages: initialMessages.map((msg) => ({
+    initialMessages: messages.map((msg) => ({
       id: msg.id,
       parts: [{ type: "text" as const, text: msg.content as string }], // Ensure content is string
       role: msg.role as "user" | "assistant",
@@ -721,6 +726,9 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
     }),
     onFinish(message) {
       console.log("[v0] Message finished:", message)
+      // Update local messages state with the finished message
+      setMessages((prevMessages) => [...prevMessages, message as Message])
+
       if (currentChat?.is_temporary && !currentChat.is_project_chat) {
         loadChats() // Reload if it was temporary to show it's now saved
       }
@@ -745,7 +753,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
     },
   })
 
-  const { messages, status, sendMessage } = chatHook
+  const { sendMessage } = chatHook
 
   useEffect(() => {
     if (autoScroll && messagesEndRef.current) {
@@ -974,6 +982,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
     setCurrentChatId(null)
     setShowProjectsDialog(false)
     setShowAllProjects(false)
+    setMessages([]) // Clear messages when switching projects
   }
 
   const handleRenameProject = (project: Project) => {
@@ -1000,6 +1009,7 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
           setCurrentProjectId(null)
           setProjectChats([])
           setGeneratedImages([])
+          setMessages([]) // Clear messages when deleting current project
         }
         toast({ title: "Project Deleted", description: `Project ${projectId} has been deleted.` })
       }
@@ -1040,10 +1050,48 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
     loadChatMessages(chat.id)
   }
 
-  const handleSignOut = () => {
-    console.log("Signing out")
-    // Implement actual sign out logic, e.g., by calling an API endpoint
-    toast({ title: "Feature Coming Soon", description: "Sign out functionality is not yet implemented." })
+  // /** rest of code here **/
+  const handleSignOut = async () => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error("[v0] Error signing out:", error)
+        toast({
+          title: "Error",
+          description: "Failed to sign out. Please try again.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Clear local state
+      setChats([])
+      setMessages([]) // Clear messages from state
+      setCurrentChatId(null)
+      setCurrentChat(null)
+      setCurrentProject(null)
+      setCurrentProjectId(null)
+      setProjects([])
+      setProjectChats([])
+      setGeneratedImages([])
+
+      toast({
+        title: "Signed Out",
+        description: "You have been signed out successfully.",
+      })
+
+      // Redirect to splash screen
+      window.location.href = "/splash"
+    } catch (error) {
+      console.error("[v0] Unexpected error during sign out:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      })
+    }
   }
 
   const filteredChats = chats.filter((chat) => chat.title.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -1118,6 +1166,11 @@ Please create deep lore with historical events, mythologies, legends, and cultur
       // Changed from chatInput to input
       setInput(prompt)
       await sendMessage({ text: prompt })
+      setInput("")
+    } else if (prompt) {
+      // If input is not empty, append the prompt to the current input
+      setInput(input + "\n" + prompt)
+      await sendMessage({ text: input + "\n" + prompt })
       setInput("")
     }
 
