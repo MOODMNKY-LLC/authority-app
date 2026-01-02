@@ -20,10 +20,30 @@ export function NotionAuth() {
     setError(null)
 
     try {
+      // Use environment variable if available (for production consistency)
+      // Otherwise normalize window.location.origin (replace 0.0.0.0 with localhost)
+      // In production, NEXT_PUBLIC_SITE_URL should be set in Vercel environment variables
+      let origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || window.location.origin
+      if (origin.includes("0.0.0.0")) {
+        origin = origin.replace("0.0.0.0", "localhost")
+      }
+      
+      // Ensure HTTPS in production
+      if (process.env.NODE_ENV === "production" && !origin.startsWith("https://")) {
+        origin = origin.replace(/^http:/, "https:")
+      }
+      
+      console.log("[Authority] Notion OAuth - Redirect URL:", {
+        origin,
+        redirectTo: `${origin}/auth/callback`,
+        environment: process.env.NODE_ENV,
+        hasSiteUrl: !!process.env.NEXT_PUBLIC_SITE_URL,
+      })
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "notion" as any,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${origin}/auth/callback`,
         },
       })
       if (error) throw error
@@ -43,14 +63,14 @@ export function NotionAuth() {
           </div>
         </div>
         <CardTitle className="text-2xl text-center text-white font-semibold">Welcome to Authority</CardTitle>
-        <CardDescription className="text-center text-zinc-400">Your Gothic Writing Companion</CardDescription>
+        <CardDescription className="text-center text-zinc-400">AI-Assisted World Building System</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
         <div className="space-y-4">
           <Button
             onClick={handleNotionAuth}
-            className="w-full bg-white hover:bg-zinc-100 text-black font-semibold shadow-lg transition-all h-14 text-lg group"
+            className="w-full bg-transparent hover:bg-white/10 border-2 border-white/20 hover:border-white/40 text-white font-semibold shadow-lg transition-all h-14 text-lg group backdrop-blur-sm"
             disabled={loading}
           >
             {loading ? (
