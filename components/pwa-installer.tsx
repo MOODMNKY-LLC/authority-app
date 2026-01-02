@@ -12,16 +12,35 @@ export function PWAInstaller() {
     const isPreview = window.location.hostname.includes("vusercontent.net")
 
     if ("serviceWorker" in navigator && !isPreview) {
+      // Register service worker - use static file from public directory
+      // This avoids redirect issues that break service worker registration
       navigator.serviceWorker
-        .register("/api/sw.js", { scope: "/", updateViaCache: "none" })
+        .register("/sw.js", { 
+          scope: "/", 
+          updateViaCache: "none",
+          type: "classic"
+        })
         .then((registration) => {
-          console.log("[v0] Service Worker registered:", registration.scope)
+          console.log("[Authority] Service Worker registered:", registration.scope)
+          
+          // Check for updates
+          registration.addEventListener("updatefound", () => {
+            const newWorker = registration.installing
+            if (newWorker) {
+              newWorker.addEventListener("statechange", () => {
+                if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                  console.log("[Authority] New service worker available")
+                }
+              })
+            }
+          })
         })
         .catch((error) => {
-          console.error("[v0] Service Worker registration failed:", error)
+          console.error("[Authority] Service Worker registration failed:", error)
+          // Don't show error to user - service worker is optional
         })
     } else if (isPreview) {
-      console.log("[v0] Service Worker skipped in preview environment")
+      console.log("[Authority] Service Worker skipped in preview environment")
     }
 
     // Handle install prompt

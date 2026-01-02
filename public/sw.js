@@ -1,9 +1,3 @@
-import { NextRequest, NextResponse } from "next/server"
-
-// Service workers MUST be served directly without redirects
-// This route handler ensures the service worker is served correctly
-export async function GET(request: NextRequest) {
-  const swCode = `
 // Authority PWA Service Worker
 const CACHE_NAME = "authority-v1"
 const urlsToCache = [
@@ -103,21 +97,4 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close()
   event.waitUntil(clients.openWindow("/"))
 })
-`
-
-  // Service workers must be served with specific headers and no redirects
-  return new NextResponse(swCode, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/javascript; charset=utf-8",
-      "Service-Worker-Allowed": "/",
-      "Cache-Control": "public, max-age=0, must-revalidate",
-      "X-Content-Type-Options": "nosniff",
-    },
-  })
-}
-
-// Ensure this route is not cached or redirected
-export const runtime = "edge"
-export const dynamic = "force-dynamic"
 
