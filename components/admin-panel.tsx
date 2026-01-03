@@ -32,6 +32,8 @@ import { NotionSyncIndicator } from "@/components/notion-sync-indicator"
 import { NotionSyncButton } from "@/components/notion-sync-button"
 import { AdminUsersSection } from "@/components/admin-users-section"
 import { createClient } from "@/lib/supabase/client"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Sheet, SheetContent } from "@/components/ui/sheet"
 
 interface AdminPanelProps {
   open: boolean
@@ -436,6 +438,199 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
     toast({ title: "Configuration Saved", description: "Changes have been saved (simulated)." })
   }
 
+  const isMobile = useIsMobile()
+  const adminTabs = [
+    { id: "ai-core", icon: Brain, label: "AI Core" },
+    { id: "integrations", icon: Key, label: "Integrations" },
+    { id: "web-search", icon: Globe, label: "Web Search" },
+    { id: "mcp", icon: Server, label: "MCP Servers" },
+    { id: "automation", icon: Workflow, label: "Automation" },
+    { id: "webhooks", icon: Webhook, label: "Webhooks" },
+    { id: "database", icon: Database, label: "Database" },
+    { id: "users", icon: Users, label: "Users" },
+    { id: "security", icon: Shield, label: "Security" },
+  ]
+
+  // Mobile: Use Sheet component with tabs navigation
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="w-full sm:w-[400px] p-0 overflow-hidden bg-zinc-950">
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="p-4 border-b border-zinc-800/50 shrink-0 bg-zinc-950">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-red-500" />
+                  Admin Panel
+                </h2>
+              </div>
+            </div>
+
+            {/* Navigation Tabs - Scrollable horizontal tabs */}
+            <div className="border-b border-zinc-800/50 shrink-0 bg-zinc-950">
+              <ScrollArea className="w-full" orientation="horizontal">
+                <div className="flex gap-1 p-2 min-w-max">
+                  {adminTabs.map((tab) => {
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors min-h-[44px]",
+                          activeTab === tab.id
+                            ? "bg-red-900/20 text-red-400 border border-red-900/30"
+                            : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 border border-transparent",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span>{tab.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide p-4 bg-zinc-950">
+              {/* Render the same content as desktop but in mobile-friendly format */}
+              {/* AI Core Tab */}
+              {activeTab === "ai-core" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-red-500" />
+                      AI Core Configuration
+                    </h2>
+                    <p className="text-zinc-400 text-sm">
+                      Configure the base AI model and parameters that power Authority's intelligence.
+                    </p>
+                  </div>
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">Model Provider</CardTitle>
+                      <p className="text-sm text-zinc-400">Choose between OpenAI or local Ollama models</p>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Provider</Label>
+                        <Select value={config.base_provider} onValueChange={(val) => updateConfig("base_provider", val)}>
+                          <SelectTrigger className="bg-zinc-950 border-zinc-800 min-h-[48px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI (Cloud)</SelectItem>
+                            <SelectItem value="ollama">Ollama (Local)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+              {activeTab === "integrations" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Key className="h-5 w-5 text-red-500" />
+                      Integrations
+                    </h2>
+                    <p className="text-zinc-400 text-sm">System API keys and integrations</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+              {activeTab === "web-search" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-red-500" />
+                      Web Search
+                    </h2>
+                    <p className="text-zinc-400 text-sm">Hardcoded search tools configuration</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+              {activeTab === "mcp" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Server className="h-5 w-5 text-red-500" />
+                      MCP Servers
+                    </h2>
+                    <p className="text-zinc-400 text-sm">Model Context Protocol servers</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+              {activeTab === "automation" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Workflow className="h-5 w-5 text-red-500" />
+                      Automation
+                    </h2>
+                    <p className="text-zinc-400 text-sm">n8n workflow automation</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+              {activeTab === "webhooks" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Webhook className="h-5 w-5 text-red-500" />
+                      Webhooks & SSR
+                    </h2>
+                    <p className="text-zinc-400 text-sm">Realtime events configuration</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+              {activeTab === "database" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Database className="h-5 w-5 text-red-500" />
+                      Database
+                    </h2>
+                    <p className="text-zinc-400 text-sm">Environment variables</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+              {activeTab === "users" && <AdminUsersSection />}
+              {activeTab === "security" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-red-500" />
+                      Security
+                    </h2>
+                    <p className="text-zinc-400 text-sm">Access control configuration</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">Full configuration available on desktop view</p>
+                </div>
+              )}
+            </div>
+
+            {/* Save Button */}
+            <div className="p-4 border-t border-zinc-800/50 shrink-0 bg-zinc-950">
+              <Button onClick={saveConfig} className="w-full bg-red-600 hover:bg-red-700 text-white min-h-[48px]">
+                Save Configuration
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  // Desktop: Original overlay layout
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-7xl h-[90vh] bg-zinc-950/95 backdrop-blur-xl rounded-xl border border-zinc-800/50 shadow-2xl overflow-hidden flex">

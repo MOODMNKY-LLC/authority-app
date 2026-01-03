@@ -57,6 +57,7 @@ import { N8nSection } from "@/components/integrations/n8n-section"
 import { MCPSection } from "@/components/integrations/mcp-section"
 import { AIProviderSection } from "@/components/integrations/ai-provider-section"
 import { DatabasesSection } from "@/components/integrations/databases-section"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 interface SettingsPanelProps {
   open: boolean
@@ -273,14 +274,28 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
 
   if (!open) return null
 
-  // Mobile: Use Sheet component
+  // Mobile: Use Sheet component with tabs navigation
   if (isMobile) {
+    const settingsTabs = [
+      { id: "profile", icon: User, label: "Profile" },
+      { id: "preferences", icon: Sparkles, label: "Preferences" },
+      { id: "ai-provider", icon: Brain, label: "AI Provider" },
+      { id: "notion", icon: Database, label: "Notion" },
+      { id: "sync", icon: RefreshCw, label: "Sync" },
+      { id: "discord", icon: MessageSquare, label: "Discord" },
+      { id: "flowise", icon: Workflow, label: "Flowise" },
+      { id: "n8n", icon: Zap, label: "Automations" },
+      { id: "mcp", icon: Plug, label: "MCP" },
+      { id: "databases", icon: Database, label: "Databases" },
+      { id: "appearance", icon: Palette, label: "Appearance" },
+    ]
+
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:w-[400px] p-0 overflow-hidden">
+        <SheetContent side="right" className="w-full sm:w-[400px] p-0 overflow-hidden bg-zinc-950">
           <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="p-4 border-b border-zinc-800/50 shrink-0">
+            <div className="p-4 border-b border-zinc-800/50 shrink-0 bg-zinc-950">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <Settings className="h-5 w-5 text-red-500" />
@@ -289,8 +304,34 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
               </div>
             </div>
 
+            {/* Navigation Tabs - Scrollable horizontal tabs */}
+            <div className="border-b border-zinc-800/50 shrink-0 bg-zinc-950">
+              <ScrollArea className="w-full" orientation="horizontal">
+                <div className="flex gap-1 p-2 min-w-max">
+                  {settingsTabs.map((tab) => {
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors min-h-[44px]",
+                          activeTab === tab.id
+                            ? "bg-red-900/20 text-red-400 border border-red-900/30"
+                            : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 border border-transparent",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span>{tab.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+
             {/* Content Area - Show selected tab content */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide p-4">
+            <div className="flex-1 overflow-y-auto scrollbar-hide p-4 bg-zinc-950">
               {loading && (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-red-500" />
@@ -448,7 +489,7 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
                         currentBackground={backgroundImage}
                         customBackgrounds={customBackgrounds}
                         onBackgroundChange={setBackgroundImage}
-                        onDeleteBackground={handleDeleteBackground}
+                        onDeleteBackground={deleteCustomBackground}
                       />
                     </CardContent>
                   </Card>
