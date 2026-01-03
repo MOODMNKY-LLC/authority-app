@@ -42,6 +42,7 @@ interface AdminPanelProps {
 
 export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
   const { toast } = useToast()
+  const isMobile = useIsMobile() // Must be called before any early returns
   const [isAdmin, setIsAdmin] = useState(false)
   const [checkingAdmin, setCheckingAdmin] = useState(true)
   const [config, setConfig] = useState<Record<string, any>>({
@@ -438,7 +439,6 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
     toast({ title: "Configuration Saved", description: "Changes have been saved (simulated)." })
   }
 
-  const isMobile = useIsMobile()
   const adminTabs = [
     { id: "ai-core", icon: Brain, label: "AI Core" },
     { id: "integrations", icon: Key, label: "Integrations" },
