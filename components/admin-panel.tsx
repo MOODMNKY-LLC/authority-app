@@ -455,7 +455,7 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:w-[400px] p-0 overflow-hidden bg-zinc-950">
+        <SheetContent side="right" className="w-full sm:w-[400px] p-0 overflow-hidden bg-zinc-950 border-0">
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="p-4 border-b border-zinc-800/50 shrink-0 bg-zinc-950">
@@ -468,29 +468,27 @@ export function AdminPanel({ open, onOpenChange }: AdminPanelProps) {
             </div>
 
             {/* Navigation Tabs - Scrollable horizontal tabs */}
-            <div className="border-b border-zinc-800/50 shrink-0 bg-zinc-950">
-              <ScrollArea className="w-full" orientation="horizontal">
-                <div className="flex gap-1 p-2 min-w-max">
-                  {adminTabs.map((tab) => {
-                    const Icon = tab.icon
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors min-h-[44px]",
-                          activeTab === tab.id
-                            ? "bg-red-900/20 text-red-400 border border-red-900/30"
-                            : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 border border-transparent",
-                        )}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span>{tab.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </ScrollArea>
+            <div className="border-b border-zinc-800/50 shrink-0 bg-zinc-950 overflow-x-auto scrollbar-hide">
+              <div className="flex gap-1 p-2 min-w-max">
+                {adminTabs.map((tab) => {
+                  const Icon = tab.icon
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] shrink-0",
+                        activeTab === tab.id
+                          ? "bg-red-900/20 text-red-400 border border-red-900/30"
+                          : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200 border border-transparent",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{tab.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Content Area */}
