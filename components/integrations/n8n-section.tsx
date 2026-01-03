@@ -478,8 +478,14 @@ export function N8nSection() {
 
       <Button
         onClick={handleSave}
+        onTouchEnd={(e) => {
+          e.preventDefault()
+          if (!saving && !loading && apiKey && apiKey !== "••••••••") {
+            handleSave()
+          }
+        }}
         disabled={saving || loading || !apiKey || apiKey === "••••••••"}
-        className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+        className="w-full bg-orange-600 hover:bg-orange-700 text-white min-h-[48px]"
       >
         {saving ? (
           <>

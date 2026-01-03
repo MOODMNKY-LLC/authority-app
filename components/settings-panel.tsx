@@ -499,6 +499,16 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
               <div className="p-4 border-t border-zinc-800/50 shrink-0">
                 <Button
                   onClick={activeTab === "profile" ? saveProfile : savePreferences}
+                  onTouchEnd={(e) => {
+                    e.preventDefault()
+                    if (!saving) {
+                      if (activeTab === "profile") {
+                        saveProfile()
+                      } else {
+                        savePreferences()
+                      }
+                    }
+                  }}
                   disabled={saving}
                   className="w-full bg-red-600 hover:bg-red-700 text-white min-h-[48px]"
                 >

@@ -181,25 +181,29 @@ export function UserAvatarUpload({
           id="avatar-upload"
           disabled={uploading}
         />
-        <label htmlFor="avatar-upload">
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            disabled={uploading}
-            className="cursor-pointer"
-          >
-            <span>
-              <Upload className="h-3 w-3 mr-1" />
-              {previewUrl ? "Change" : "Upload"}
-            </span>
-          </Button>
-        </label>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          onTouchEnd={(e) => {
+            e.preventDefault()
+            fileInputRef.current?.click()
+          }}
+          disabled={uploading}
+          className="cursor-pointer"
+        >
+          <Upload className="h-3 w-3 mr-1" />
+          {previewUrl ? "Change" : "Upload"}
+        </Button>
         {previewUrl && (
           <Button
             variant="outline"
             size="sm"
             onClick={handleRemove}
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              handleRemove()
+            }}
             disabled={uploading}
             className="text-red-400 hover:text-red-300 hover:border-red-400"
           >

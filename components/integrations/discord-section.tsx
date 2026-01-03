@@ -379,8 +379,14 @@ export function DiscordSection() {
 
       <Button
         onClick={handleSave}
+        onTouchEnd={(e) => {
+          e.preventDefault()
+          if (!saving && !loading) {
+            handleSave()
+          }
+        }}
         disabled={saving || loading}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white min-h-[48px]"
       >
         {saving ? (
           <>

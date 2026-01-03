@@ -303,8 +303,14 @@ export function AIProviderSection() {
 
       <Button
         onClick={handleSave}
+        onTouchEnd={(e) => {
+          e.preventDefault()
+          if (!saving && !loading && apiKey && apiKey !== "••••••••") {
+            handleSave()
+          }
+        }}
         disabled={saving || loading || !apiKey || apiKey === "••••••••"}
-        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white min-h-[48px]"
       >
         {saving ? (
           <>

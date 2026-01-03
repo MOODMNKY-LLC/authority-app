@@ -564,8 +564,14 @@ export function MCPSection({ onNavigateToNotion }: MCPSectionProps) {
             </Button>
             <Button
               onClick={handleSaveAuth}
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                if (!authSaving && authApiKey.trim()) {
+                  handleSaveAuth()
+                }
+              }}
               disabled={authSaving || !authApiKey.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 min-h-[48px]"
             >
               {authSaving ? (
                 <>
