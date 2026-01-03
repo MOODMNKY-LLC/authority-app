@@ -43,13 +43,54 @@ export async function GET(request: NextRequest) {
     }
 
     // Get base URL for our callback
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-                   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-                   request.headers.get("origin") ||
-                   "http://localhost:3000"
+    // Priority: NEXT_PUBLIC_SITE_URL > VERCEL_URL > request origin > localhost
+    let baseUrl = process.env.NEXT_PUBLIC_SITE_URL
+    
+    if (!baseUrl) {
+      // Try Vercel URL (automatically set by Vercel)
+      if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`
+      }
+    }
+    
+    if (!baseUrl) {
+      // Try request origin
+      const origin = request.headers.get("origin") || request.headers.get("host")
+      if (origin) {
+        // Ensure protocol is included
+        if (origin.startsWith("http://") || origin.startsWith("https://")) {
+          baseUrl = origin
+        } else {
+          // Add protocol based on environment
+          const protocol = process.env.NODE_ENV === "production" ? "https" : "http"
+          baseUrl = `${protocol}://${origin}`
+        }
+      }
+    }
+    
+    // Final fallback
+    if (!baseUrl) {
+      baseUrl = process.env.NODE_ENV === "production" 
+        ? "https://localhost:3000" // Should never happen in production
+        : "http://localhost:3000"
+    }
+    
+    // Ensure HTTPS in production
+    if (process.env.NODE_ENV === "production" && baseUrl.startsWith("http://")) {
+      baseUrl = baseUrl.replace("http://", "https://")
+    }
+    
+    console.log("[Notion OAuth] Base URL:", {
+      baseUrl,
+      nextPublicSiteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+      vercelUrl: process.env.VERCEL_URL,
+      nodeEnv: process.env.NODE_ENV,
+      requestOrigin: request.headers.get("origin"),
+      requestHost: request.headers.get("host"),
+    })
 
     // Get Notion OAuth client ID from environment
-    const notionClientId = process.env.NOTION_OAUTH_CLIENT_ID || "2dcd872b-594c-801d-9629-00377ca43eaa"
+    const notionClientId = process.env.NOTION_OAUTH_CLIENT_ID
     
     if (!notionClientId) {
       return NextResponse.json(

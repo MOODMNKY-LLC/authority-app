@@ -26,12 +26,12 @@ export function NotionAuth() {
         throw new Error("Cannot authenticate: not in browser environment")
       }
 
-      // Get origin - prioritize window.location.origin as it's always available in browser
-      let origin = window.location.origin
+      // Get origin - prioritize environment variable for production, then window.location
+      let origin = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
       
       // Fallback: construct from protocol and host if origin is somehow undefined
       if (!origin || origin === 'undefined' || origin === 'null') {
-        origin = `${window.location.protocol}//${window.location.host}`
+        origin = window.location.origin || `${window.location.protocol}//${window.location.host}`
       }
       
       // Normalize: replace 0.0.0.0 with localhost
@@ -42,6 +42,11 @@ export function NotionAuth() {
       // Ensure HTTPS is used if the page is loaded over HTTPS (for dev:https)
       // This is critical - redirect_uri must match the protocol used
       if (window.location.protocol === 'https:' && origin.startsWith('http:')) {
+        origin = origin.replace('http:', 'https:')
+      }
+      
+      // In production, enforce HTTPS
+      if (process.env.NODE_ENV === 'production' && origin.startsWith('http:')) {
         origin = origin.replace('http:', 'https:')
       }
       
@@ -62,6 +67,8 @@ export function NotionAuth() {
         windowProtocol: window.location.protocol,
         windowHost: window.location.host,
         environment: process.env.NODE_ENV,
+        nextPublicSiteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
       })
 
       // Validate redirectTo before passing to Supabase
