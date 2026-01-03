@@ -64,7 +64,16 @@ export function NotionSyncButton({ onSyncComplete }: NotionSyncButtonProps) {
   const handleNotionOAuth = async () => {
     try {
       const supabase = createBrowserClient()
-      let origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || window.location.origin
+      let origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || 
+                   (typeof window !== 'undefined' ? window.location.origin : '')
+      
+      // Fallback if origin is still undefined
+      if (!origin || origin === 'undefined') {
+        origin = typeof window !== 'undefined' 
+          ? `${window.location.protocol}//${window.location.host}`
+          : 'http://localhost:3000'
+      }
+      
       if (origin.includes("0.0.0.0")) {
         origin = origin.replace("0.0.0.0", "localhost")
       }

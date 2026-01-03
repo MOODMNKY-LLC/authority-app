@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { EnhancedChatInterface } from "@/components/enhanced-chat-interface"
 
-export default async function Page() {
+export default async function ChatPage() {
   const supabase = await createClient()
 
   const { data: messages } = await supabase
@@ -10,5 +10,6 @@ export default async function Page() {
     .order("createdAt", { ascending: true })
     .limit(50)
 
-  return <EnhancedChatInterface initialMessages={messages || []} />
+  return <EnhancedChatInterface initialMessages={messages || []} skipSidebar={true} />
 }
+

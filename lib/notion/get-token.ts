@@ -1,12 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
+import { decryptApiKey } from "@/lib/encryption"
 
 /**
  * Get Notion API token for a user
  * PRIORITIZES OAuth token - this is what users authenticate with
  * Falls back to integration token if OAuth not available
+ * Integration tokens are decrypted before returning
  * 
  * @param userId - The authenticated user's ID
- * @returns Notion API token or null if not configured
+ * @returns Notion API token (decrypted if integration token) or null if not configured
  */
 export async function getNotionToken(userId: string): Promise<string | null> {
   const supabase = await createClient()
@@ -21,9 +23,22 @@ export async function getNotionToken(userId: string): Promise<string | null> {
     return null
   }
 
-  // PRIORITIZE OAuth token - this is what users authenticate with
-  // Fall back to integration token if OAuth not available
-  return settings.notion_access_token || settings.notion_token || null
+  // PRIORITIZE OAuth token - this is what users authenticate with (not encrypted)
+  if (settings.notion_access_token) {
+    return settings.notion_access_token
+  }
+
+  // Fall back to integration token (needs decryption)
+  if (settings.notion_token) {
+    try {
+      return await decryptApiKey(settings.notion_token)
+    } catch (error) {
+      console.error("[Authority] Error decrypting Notion integration token:", error)
+      return null
+    }
+  }
+
+  return null
 }
 
 /**

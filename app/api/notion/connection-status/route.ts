@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const { data: settings } = await supabase
       .from("user_settings")
       .select(
-        "notion_access_token, notion_token, notion_workspace_id, notion_workspace_name, notion_databases, notion_template_page_id, updated_at",
+        "notion_access_token, notion_token, notion_workspace_id, notion_workspace_name, notion_databases, notion_template_page_id, auto_sync_enabled, updated_at",
       )
       .eq("user_id", user.id)
       .single()
@@ -145,6 +145,7 @@ export async function GET(request: NextRequest) {
         pageId: settings?.notion_template_page_id || null,
       },
       canSync: hasAnyToken && tokenValid,
+      autoSyncEnabled: settings?.auto_sync_enabled || false,
     })
   } catch (error: any) {
     console.error("[Authority] Connection status error:", error)

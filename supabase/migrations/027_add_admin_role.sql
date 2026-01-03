@@ -11,3 +11,5 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_is_admin ON user_profiles(is_admin)
 COMMENT ON COLUMN user_profiles.is_admin IS 'Whether this user has admin privileges. Admin users can access the Admin Panel for system-wide configuration.';
 
 
+
+

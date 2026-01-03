@@ -21,32 +21,75 @@ export function NotionAuth() {
     setError(null)
 
     try {
-      // Use environment variable if available (for production consistency)
-      // Otherwise normalize window.location.origin (replace 0.0.0.0 with localhost)
-      // In production, NEXT_PUBLIC_SITE_URL should be set in Vercel environment variables
-      let origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || window.location.origin
+      // Ensure we're in browser environment
+      if (typeof window === 'undefined') {
+        throw new Error("Cannot authenticate: not in browser environment")
+      }
+
+      // Get origin - prioritize window.location.origin as it's always available in browser
+      let origin = window.location.origin
+      
+      // Fallback: construct from protocol and host if origin is somehow undefined
+      if (!origin || origin === 'undefined' || origin === 'null') {
+        origin = `${window.location.protocol}//${window.location.host}`
+      }
+      
+      // Normalize: replace 0.0.0.0 with localhost
       if (origin.includes("0.0.0.0")) {
         origin = origin.replace("0.0.0.0", "localhost")
       }
       
-      // Ensure HTTPS in production
-      if (process.env.NODE_ENV === "production" && !origin.startsWith("https://")) {
-        origin = origin.replace(/^http:/, "https:")
+      // Ensure HTTPS is used if the page is loaded over HTTPS (for dev:https)
+      // This is critical - redirect_uri must match the protocol used
+      if (window.location.protocol === 'https:' && origin.startsWith('http:')) {
+        origin = origin.replace('http:', 'https:')
       }
+      
+      // Ensure we have a valid origin
+      if (!origin || !origin.startsWith('http')) {
+        console.error("[Authority] Invalid origin:", origin)
+        // Use HTTPS for local dev if we're in HTTPS mode, otherwise HTTP
+        const protocol = window.location.protocol || 'https:'
+        origin = `${protocol}//localhost:3000`
+      }
+      
+      const redirectTo = `${origin}/auth/callback`
       
       console.log("[Authority] Notion OAuth - Redirect URL:", {
         origin,
-        redirectTo: `${origin}/auth/callback`,
+        redirectTo,
+        windowOrigin: window.location.origin,
+        windowProtocol: window.location.protocol,
+        windowHost: window.location.host,
         environment: process.env.NODE_ENV,
-        hasSiteUrl: !!process.env.NEXT_PUBLIC_SITE_URL,
       })
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      // Validate redirectTo before passing to Supabase
+      if (!redirectTo || redirectTo.includes('undefined')) {
+        throw new Error(`Invalid redirect URL: ${redirectTo}`)
+      }
+
+      const { error, data } = await supabase.auth.signInWithOAuth({
         provider: "notion" as any,
         options: {
-          redirectTo: `${origin}/auth/callback`,
+          redirectTo,
+          // Explicitly pass query parameters that Notion might need
+          queryParams: {
+            // Ensure redirect_uri is included in the OAuth request
+            // Supabase will handle the actual redirect_uri to its callback,
+            // but we can add custom params if needed
+          },
         },
       })
+      
+      // Log the OAuth URL if available (for debugging)
+      if (data?.url) {
+        console.log("[Authority] Notion OAuth URL:", data.url)
+        // Check if redirect_uri is in the URL
+        const urlObj = new URL(data.url)
+        const redirectUriParam = urlObj.searchParams.get('redirect_uri')
+        console.log("[Authority] Redirect URI in OAuth URL:", redirectUriParam)
+      }
       if (error) throw error
     } catch (err: any) {
       setError(err.message)

@@ -127,3 +127,5 @@ Potential improvements:
 The template discovery is now **fully automatic**! Users authenticate with OAuth, and the system automatically finds and stores their template page ID. No manual steps required! 🎉
 
 
+
+

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { Client } from "@notionhq/client"
+import { queryNotionDatabase } from "@/lib/notion/query-database"
 
 const REQUIRED_DATABASES = [
   "Chat Sessions",
@@ -80,14 +81,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Notion client
-    const notion = new Client({
+    let notion = new Client({
       auth: notionToken,
     })
     
-    // Validate token works before proceeding
+    // Validate token works and client is properly initialized
     try {
       await notion.users.me({})
       console.log("[Authority] ✅ Token validated successfully")
+      // Don't pre-check query method - Next.js may have issues with method detection
+      // We'll catch errors when actually using it
     } catch (tokenError: any) {
       console.error("[Authority] ❌ Token validation failed:", tokenError.message)
       return NextResponse.json(
@@ -216,10 +219,10 @@ export async function POST(request: NextRequest) {
 
           try {
             // Query database to get page count and info
-            const dbQuery = await notion.databases.query({
-              database_id: dbId,
+            // Use helper function which has fallback to raw HTTP
+            const dbQuery = await queryNotionDatabase(notion, dbId, {
               page_size: 1, // Just to check if accessible
-            })
+            }, notionToken)
 
             // Get database details
             const dbDetails = await notion.databases.retrieve({
@@ -238,11 +241,10 @@ export async function POST(request: NextRequest) {
             let startCursor: string | undefined
 
             while (hasMore) {
-              const query = await notion.databases.query({
-                database_id: dbId,
+              const query = await queryNotionDatabase(notion, dbId, {
                 page_size: 100,
                 start_cursor: startCursor,
-              })
+              }, notionToken)
               fullPageCount += query.results.length
               hasMore = query.has_more
               startCursor = query.next_cursor || undefined
@@ -254,8 +256,7 @@ export async function POST(request: NextRequest) {
             // Try to sort by last edited time (may not have this property)
             let sampleQuery
             try {
-              sampleQuery = await notion.databases.query({
-                database_id: dbId,
+              sampleQuery = await queryNotionDatabase(notion, dbId, {
                 page_size: 5,
                 sorts: [
                   {
@@ -263,13 +264,12 @@ export async function POST(request: NextRequest) {
                     direction: "descending",
                   },
                 ],
-              })
-            } catch (sortError) {
-              // If sorting fails, just get first 5 pages
-              sampleQuery = await notion.databases.query({
-                database_id: dbId,
+              }, notionToken)
+            } catch (sortError: any) {
+              // If sorting fails, try without sort
+              sampleQuery = await queryNotionDatabase(notion, dbId, {
                 page_size: 5,
-              })
+              }, notionToken)
             }
 
             databaseContents[dbName] = {
@@ -295,6 +295,21 @@ export async function POST(request: NextRequest) {
             }
           } catch (dbError: any) {
             console.error(`[Authority] Error querying database ${dbName}:`, dbError)
+            // Log more details about the error
+            if (dbError.message?.includes("not a function")) {
+              console.error(`[Authority] Notion client issue - notion type:`, typeof notion)
+              console.error(`[Authority] Notion client has databases:`, !!notion?.databases)
+              console.error(`[Authority] Notion client databases type:`, typeof notion?.databases)
+              console.error(`[Authority] Notion client databases.query:`, typeof notion?.databases?.query)
+              console.error(`[Authority] Notion client databases.retrieve:`, typeof notion?.databases?.retrieve)
+              // Verify client is still valid
+              try {
+                await notion.users.me({})
+                console.error(`[Authority] Client validation: OK`)
+              } catch (validationError) {
+                console.error(`[Authority] Client validation failed:`, validationError)
+              }
+            }
             // Still add the database ID even if query fails
             databases[dbName] = {
               id: dbId,
@@ -398,10 +413,10 @@ export async function POST(request: NextRequest) {
 
             try {
               // Query database to get page count and info
-              const dbQuery = await notion.databases.query({
-                database_id: dbId,
+              // Use helper function which has fallback to raw HTTP
+              const dbQuery = await queryNotionDatabase(notion, dbId, {
                 page_size: 1, // Just to check if accessible
-              })
+              }, notionToken)
 
               // Get database details
               const dbDetails = await notion.databases.retrieve({
@@ -420,11 +435,10 @@ export async function POST(request: NextRequest) {
               let startCursor: string | undefined
 
               while (hasMore) {
-                const query = await notion.databases.query({
-                  database_id: dbId,
+                const query = await queryNotionDatabase(notion, dbId, {
                   page_size: 100,
                   start_cursor: startCursor,
-                })
+                }, notionToken)
                 fullPageCount += query.results.length
                 hasMore = query.has_more
                 startCursor = query.next_cursor || undefined
@@ -436,8 +450,7 @@ export async function POST(request: NextRequest) {
               // Try to sort by last edited time (may not have this property)
               let sampleQuery
               try {
-                sampleQuery = await notion.databases.query({
-                  database_id: dbId,
+                sampleQuery = await queryNotionDatabase(notion, dbId, {
                   page_size: 5,
                   sorts: [
                     {
@@ -445,13 +458,12 @@ export async function POST(request: NextRequest) {
                       direction: "descending",
                     },
                   ],
-                })
-              } catch (sortError) {
-                // If sorting fails, just get first 5 pages
-                sampleQuery = await notion.databases.query({
-                  database_id: dbId,
+                }, notionToken)
+              } catch (sortError: any) {
+                // If sorting fails, try without sort
+                sampleQuery = await queryNotionDatabase(notion, dbId, {
                   page_size: 5,
-                })
+                }, notionToken)
               }
 
               databaseContents[dbName] = {
@@ -547,6 +559,12 @@ export async function POST(request: NextRequest) {
           // Non-critical: FDW setup failed, but sync succeeded
           console.warn("[Authority] FDW setup error (non-critical):", fdwErr)
         }
+
+        // Trigger automatic seeding if databases are synced and user hasn't been seeded yet
+        // Only seed if all required databases are found and synced successfully
+        // Note: Seed data is now automatically created on user signup via database trigger
+        // No need to seed here - it already exists in Supabase sync tables
+        console.log("[Authority] ✅ Database sync complete. Seed data is available in Supabase and can be synced to Notion when ready.")
       }
 
       return NextResponse.json({

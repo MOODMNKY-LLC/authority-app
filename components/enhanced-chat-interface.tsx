@@ -155,6 +155,7 @@ interface Tool {
 
 interface EnhancedChatInterfaceProps {
   initialMessages?: Message[]
+  skipSidebar?: boolean // When true, skip rendering SidebarProvider and Sidebar
 }
 
 type ToolType = "webSearch" | "deepResearch" | "imageGen" | "notion" | "worldBuilding" | "n8nAutomation"
@@ -169,7 +170,7 @@ interface ActiveTool {
 const openaiModels = ["gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
 const ollamaModels = ["llama3", "codellama", "mistral"]
 
-export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInterfaceProps) {
+export function EnhancedChatInterface({ initialMessages = [], skipSidebar = false }: EnhancedChatInterfaceProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [isRecording, setIsRecording] = useState(false)
@@ -297,15 +298,44 @@ export function EnhancedChatInterface({ initialMessages = [] }: EnhancedChatInte
         return
       }
 
-      const { data: profile } = await supabase
+      // First ensure profile exists (this will create it if missing and assign admin to first user)
+      const profileResponse = await fetch("/api/user-profile")
+      if (profileResponse.ok) {
+        const { profile } = await profileResponse.json()
+        if (profile) {
+          const isAdminUser = profile.role === "admin"
+          setIsAdmin(isAdminUser)
+          console.log("[Authority] Admin status check:", { 
+            userId: user.id, 
+            role: profile.role, 
+            isAdmin: isAdminUser,
+            profileId: profile.id 
+          })
+          return
+        }
+      }
+
+      // Fallback: query directly if API fails
+      const { data: profile, error } = await supabase
         .from("user_profiles")
         .select("role")
         .eq("user_id", user.id)
-        .single()
+        .maybeSingle()
+
+      if (error) {
+        console.error("[Authority] Error fetching profile:", error)
+        setIsAdmin(false)
+        return
+      }
 
       const isAdminUser = profile?.role === "admin"
       setIsAdmin(isAdminUser)
-      console.log("[Authority] Admin status check:", { userId: user.id, role: profile?.role, isAdmin: isAdminUser })
+      console.log("[Authority] Admin status check (direct query):", { 
+        userId: user.id, 
+        role: profile?.role, 
+        isAdmin: isAdminUser,
+        hasProfile: !!profile
+      })
     } catch (error) {
       console.error("[Authority] Error checking admin status:", error)
       setIsAdmin(false)
@@ -1301,10 +1331,12 @@ Please create deep lore with historical events, mythologies, legends, and cultur
     { text: "Craft a compelling faction", icon: <Shield className="h-5 w-5" /> },
   ]
 
-  return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-black">
-        <Sidebar collapsible="icon" className="border-r border-zinc-800">
+  const content = (
+    <>
+      {!skipSidebar && (
+        <>
+          <div className="flex h-screen w-full overflow-hidden bg-black">
+            <Sidebar collapsible="icon" className="border-r border-zinc-800">
           <SidebarHeader className="border-b border-zinc-800/50 p-3 space-y-3 bg-zinc-950/80 backdrop-blur-xl">
             {/* Scrolling ticker text */}
             <div className="overflow-hidden group-data-[collapsible=icon]:hidden">
@@ -1648,7 +1680,7 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                   <DropdownMenuContent side="top" align="end" className="w-56">
                     <DropdownMenuItem onClick={() => setShowSettingsPanel(true)}>
                       <Settings className="h-4 w-4 mr-2" />
-                      Settings & Personalization
+                      Settings
                     </DropdownMenuItem>
                     {isAdmin && (
                       <DropdownMenuItem onClick={() => setShowAdminPanel(true)}>
@@ -1681,20 +1713,20 @@ Please create deep lore with historical events, mythologies, legends, and cultur
             }}
           />
           {/* Header with model selector and group chat/temporary chat buttons */}
-          <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-zinc-800 bg-black/95 backdrop-blur px-4">
+          <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-zinc-800/50 backdrop-blur-xl bg-zinc-950/80 backdrop-saturate-150 px-4 shadow-sm shadow-black/20">
             <div className="flex items-center gap-2">
               <SidebarTrigger />
 
               {/* Model selector */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 text-white hover:bg-zinc-800">
+                  <Button variant="ghost" className="gap-2 text-white hover:bg-zinc-800/50 hover:backdrop-blur-md transition-all">
                     <Sparkles className="h-4 w-4 text-red-500" />
                     <span className="font-medium">{selectedModel}</span>
                     <ChevronDown className="h-4 w-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuContent align="start" className="w-64 backdrop-blur-xl bg-zinc-950/90 border-zinc-800/50">
                   <DropdownMenuLabel>OpenAI Models</DropdownMenuLabel>
                   {openaiModels.map((model) => (
                     <DropdownMenuCheckboxItem
@@ -1721,7 +1753,12 @@ Please create deep lore with historical events, mythologies, legends, and cultur
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowGroupChatDialog(true)} className="gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowGroupChatDialog(true)} 
+                className="gap-2 backdrop-blur-md bg-black/20 border-zinc-800/50 hover:bg-zinc-800/50 hover:backdrop-blur-lg transition-all"
+              >
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Group Chat</span>
               </Button>
@@ -1729,7 +1766,12 @@ Please create deep lore with historical events, mythologies, legends, and cultur
                 variant={isTemporaryChat ? "destructive" : "outline"}
                 size="sm"
                 onClick={() => setIsTemporaryChat(!isTemporaryChat)}
-                className="gap-2"
+                className={cn(
+                  "gap-2 transition-all",
+                  isTemporaryChat 
+                    ? "bg-red-600/80 hover:bg-red-600/90 border-red-500/30 backdrop-blur-md" 
+                    : "backdrop-blur-md bg-black/20 border-zinc-800/50 hover:bg-zinc-800/50 hover:backdrop-blur-lg"
+                )}
               >
                 {isTemporaryChat ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 <span className="hidden sm:inline">{isTemporaryChat ? "Temporary" : "Saved"}</span>
@@ -2044,7 +2086,369 @@ Please create deep lore with historical events, mythologies, legends, and cultur
             </form>
           </div>
         </SidebarInset>
-      </div>
+        </div>
+        </>
+      )}
+
+      {skipSidebar && (
+        <div className="flex flex-col h-screen relative w-full">
+          {/* Background overlay with opacity */}
+          <div
+            className="fixed inset-0 z-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+              opacity: 0.12,
+            }}
+          />
+          {/* Header with model selector */}
+          <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-zinc-800/50 backdrop-blur-xl bg-zinc-950/80 backdrop-saturate-150 px-4 shadow-sm shadow-black/20">
+            <div className="flex items-center gap-2">
+              {/* Model selector */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2 text-white hover:bg-zinc-800/50 hover:backdrop-blur-md transition-all">
+                    <Sparkles className="h-4 w-4 text-red-500" />
+                    <span className="font-medium">{selectedModel}</span>
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64 backdrop-blur-xl bg-zinc-950/90 border-zinc-800/50">
+                  <DropdownMenuLabel>OpenAI Models</DropdownMenuLabel>
+                  {openaiModels.map((model) => (
+                    <DropdownMenuCheckboxItem
+                      key={model}
+                      checked={selectedModel === model}
+                      onCheckedChange={() => handleModelSelect(model)}
+                    >
+                      {model}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Ollama Models (Local)</DropdownMenuLabel>
+                  {ollamaModels.map((model) => (
+                    <DropdownMenuCheckboxItem
+                      key={model}
+                      checked={selectedModel === model}
+                      onCheckedChange={() => handleModelSelect(model)}
+                    >
+                      {model}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowGroupChatDialog(true)} 
+                className="gap-2 backdrop-blur-md bg-black/20 border-zinc-800/50 hover:bg-zinc-800/50 hover:backdrop-blur-lg transition-all"
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Group Chat</span>
+              </Button>
+              <Button
+                variant={isTemporaryChat ? "destructive" : "outline"}
+                size="sm"
+                onClick={() => setIsTemporaryChat(!isTemporaryChat)}
+                className={cn(
+                  "gap-2 transition-all",
+                  isTemporaryChat 
+                    ? "bg-red-600/80 hover:bg-red-600/90 border-red-500/30 backdrop-blur-md" 
+                    : "backdrop-blur-md bg-black/20 border-zinc-800/50 hover:bg-zinc-800/50 hover:backdrop-blur-lg"
+                )}
+              >
+                {isTemporaryChat ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <span className="hidden sm:inline">{isTemporaryChat ? "Temporary" : "Saved"}</span>
+              </Button>
+              <PWAInstaller />
+            </div>
+          </header>
+
+          {/* Main Chat Area */}
+          <main className="flex-1 overflow-y-auto flex flex-col min-h-0 relative z-10" ref={messagesContainerRef}>
+            {displayMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-5 px-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-red-600/20 blur-2xl rounded-full" />
+                  <Avatar className="h-20 w-20 border-2 border-red-600 relative bg-zinc-900">
+                    <AvatarImage src="/assets/icons/authority-icon_no_background_upscaled.svg" alt="Authority" />
+                    <AvatarFallback className="bg-gray-900 text-red-600">A</AvatarFallback>
+                  </Avatar>
+                </div>
+
+                <div className="space-y-2 text-center">
+                  <h1 className="text-4xl font-bold text-white">Authority</h1>
+                  <p className="text-base text-zinc-400">
+                    Authority (or "Authy") is your AI-assisted world building system for creative storytelling, character development, and immersive world-building.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl mt-6">
+                  {suggestedPrompts.map((prompt, index) => (
+                    <Card
+                      key={index}
+                      className="cursor-pointer hover:bg-red-950/40 transition-all border-red-900/30 bg-black/30 backdrop-blur-md backdrop-saturate-150 overflow-hidden group"
+                      onClick={() => {
+                        console.log("[v0] Sending message:", prompt.text)
+                        sendMessage({
+                          text: prompt.text,
+                        })
+                      }}
+                    >
+                      <CardContent className="p-4 flex items-start space-x-3">
+                        <div className="text-red-600 mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform">
+                          {prompt.icon}
+                        </div>
+                        <p className="text-sm text-gray-300 line-clamp-2 leading-relaxed">{prompt.text}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 px-6 md:px-8 lg:px-12 py-6 space-y-4 max-w-6xl mx-auto w-full">
+                {displayMessages.map((message, index) => {
+                  const isUser = message.role === "user"
+                  const isStreaming = status === "streaming" && index === displayMessages.length - 1 && !isUser
+
+                  return (
+                    <div
+                      key={message.id || `message-${index}`}
+                      className={cn("flex gap-3 items-start group w-full", isUser ? "justify-end" : "justify-start")}
+                    >
+                      {!isUser && (
+                        <Avatar className="h-7 w-7 border border-red-600/50 flex-shrink-0 mt-1 bg-zinc-900">
+                          <AvatarImage src="/assets/icons/authority-icon_no_background_upscaled.svg" alt="Authority" />
+                          <AvatarFallback className="bg-gray-900 text-red-600 text-xs">A</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div
+                        className={cn(
+                          "max-w-[85%] md:max-w-[75%] lg:max-w-[70%] min-w-0 rounded-2xl px-5 py-4 backdrop-blur-md transition-all relative break-words",
+                          "shadow-lg shadow-black/20",
+                          isUser
+                            ? "bg-red-600/80 text-white border border-red-500/30"
+                            : "bg-gray-900/60 text-gray-100 border border-gray-800/50",
+                        )}
+                      >
+                        <ScrollableMessageContent maxHeight={600} className="pr-1" variant={isUser ? "user" : "assistant"}>
+                          <EnhancedMarkdown
+                            content={
+                              typeof (message as any).content === "string"
+                                ? (message as any).content
+                                : (message as any).parts
+                                  ?.filter((p: any) => p.type === "text")
+                                  .map((p: any) => p.text)
+                                  .join("") || ""
+                            }
+                          />
+                          {isStreaming && (
+                            <span className="inline-block w-1.5 h-4 bg-red-500 ml-1 animate-pulse align-middle" />
+                          )}
+                        </ScrollableMessageContent>
+                        {!isUser && (
+                          <MessageActions
+                            messageId={message.id || `message-${index}`}
+                            messageContent={
+                              typeof (message as any).content === "string"
+                                ? (message as any).content
+                                : (message as any).parts
+                                  ?.filter((p: any) => p.type === "text")
+                                  .map((p: any) => p.text)
+                                  .join("") || ""
+                            }
+                            onReadAloud={(text) => speakText(text, message.id || `message-${index}`)}
+                            isReading={readingMessageId === (message.id || `message-${index}`)}
+                            className="mt-2"
+                          />
+                        )}
+                      </div>
+                      {isUser && (
+                        <Avatar className="h-7 w-7 border border-gray-700/50 flex-shrink-0 mt-1">
+                          <AvatarImage src={userProfile?.avatar_url || "/placeholder.svg"} />
+                          <AvatarFallback className="bg-gray-800 text-gray-300 text-xs">
+                            {userProfile?.display_name?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
+                  )
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </main>
+
+          {/* Chat Input */}
+          <div
+            className={cn(
+              displayMessages.length === 0 ? "absolute bottom-24 left-0 right-0" : "mt-auto",
+              "p-4 backdrop-blur-xl bg-black/10 transition-all duration-300",
+              "border-t border-transparent",
+            )}
+          >
+            <form onSubmit={handleSendMessage} className="max-w-6xl mx-auto w-full px-6 md:px-8 lg:px-12">
+              <div className="flex items-end gap-2">
+                <DropdownMenu open={showToolsMenu} onOpenChange={setShowToolsMenu}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="mb-1 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-72">
+                    <DropdownMenuLabel className="text-xs font-semibold uppercase text-zinc-400">
+                      Tools & Features
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                      <Paperclip className="h-4 w-4 mr-3" />
+                      <div>
+                        <div className="font-medium">Add files</div>
+                        <div className="text-xs text-zinc-500">Upload documents, images, etc.</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowImageGallery(true)}>
+                      <ImageIcon className="h-4 w-4 mr-3" />
+                      <div>
+                        <div className="font-medium">Create image</div>
+                        <div className="text-xs text-zinc-500">Generate gothic artwork</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs font-semibold uppercase text-zinc-400">
+                      Search & Research
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedTools([...selectedTools, "web-search"])
+                        setShowToolsMenu(false)
+                      }}
+                    >
+                      <Search className="h-4 w-4 mr-3" />
+                      <div>
+                        <div className="font-medium">Web search</div>
+                        <div className="text-xs text-zinc-500">Tavily & Brave Search</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedTools([...selectedTools, "deep-research"])
+                        setShowToolsMenu(false)
+                      }}
+                    >
+                      <BookOpen className="h-4 w-4 mr-3" />
+                      <div>
+                        <div className="font-medium">Deep research</div>
+                        <div className="text-xs text-zinc-500">Comprehensive topic analysis</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs font-semibold uppercase text-zinc-400">
+                      Integrations
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedTools([...selectedTools, "notion"])
+                        setShowToolsMenu(false)
+                      }}
+                    >
+                      <Database className="h-4 w-4 mr-3" />
+                      <div>
+                        <div className="font-medium">Notion</div>
+                        <div className="text-xs text-zinc-500">Search & create pages</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedTools([...selectedTools, "supabase"])
+                        setShowToolsMenu(false)
+                      }}
+                    >
+                      <Database className="h-4 w-4 mr-3" />
+                      <div>
+                        <div className="font-medium">Database</div>
+                        <div className="text-xs text-zinc-500">Query stories & characters</div>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="flex-1 relative">
+                  <Input
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Message Authority..."
+                    className="pr-24 bg-zinc-900 border-zinc-800 text-white h-12 rounded-full text-base md:text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage(e)
+                      }
+                    }}
+                    disabled={status === "streaming"}
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                  />
+
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-zinc-400 hover:text-white"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      title={isRecording ? "Stop recording" : "Start recording"}
+                    >
+                      <Mic className={`h-4 w-4 ${isRecording ? "text-red-500 animate-pulse" : ""}`} />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className={`h-8 w-8 ${isLiveMode ? "text-blue-500" : "text-zinc-400"} hover:text-white`}
+                      onClick={() => setIsLiveMode(!isLiveMode)}
+                      title={isLiveMode ? "Disable live mode" : "Enable live mode"}
+                    >
+                      <Radio className={`h-4 w-4 ${isLiveMode ? "animate-pulse" : ""}`} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {selectedTools.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedTools.map((tool) => (
+                    <Badge
+                      key={tool}
+                      variant="secondary"
+                      className="cursor-pointer"
+                      onClick={() => setSelectedTools(selectedTools.filter((t) => t !== tool))}
+                    >
+                      {tool}
+                      <X className="h-3 w-3 ml-1" />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
 
       <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
         <DialogContent className="bg-zinc-900 border-zinc-800">
@@ -2497,6 +2901,12 @@ Please create deep lore with historical events, mythologies, legends, and cultur
 
       <SettingsPanel open={showSettingsPanel} onOpenChange={setShowSettingsPanel} />
       {isAdmin && <AdminPanel open={showAdminPanel} onOpenChange={setShowAdminPanel} />}
-    </SidebarProvider>
+    </>
   )
+
+  if (skipSidebar) {
+    return content
+  }
+
+  return <SidebarProvider>{content}</SidebarProvider>
 }

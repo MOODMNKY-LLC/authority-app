@@ -11,6 +11,12 @@ import {
   Image as ImageIcon,
   Save,
   Loader2,
+  MessageSquare,
+  Workflow,
+  Zap,
+  Plug,
+  Brain,
+  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,10 +30,31 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/components/ui/use-toast"
 import { UserAvatarUpload } from "@/components/user-avatar-upload"
 import { NotionSection } from "@/components/notion-section"
+import dynamic from "next/dynamic"
+import { Suspense } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { createClient } from "@/lib/supabase/client"
+
+// Lazy load the heavy sync section
+const NotionSyncSection = dynamic(() => import("@/components/notion-sync-section").then(mod => ({ default: mod.NotionSyncSection })), {
+  loading: () => (
+    <div className="space-y-4">
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  ),
+  ssr: false,
+})
 import { getAvailableBackgrounds } from "@/lib/assets"
 import { ThemeSelector, type Theme } from "@/components/theme-selector"
 import { BackgroundUpload } from "@/components/background-upload"
+import { DiscordSection } from "@/components/integrations/discord-section"
+import { FlowiseSection } from "@/components/integrations/flowise-section"
+import { N8nSection } from "@/components/integrations/n8n-section"
+import { MCPSection } from "@/components/integrations/mcp-section"
+import { AIProviderSection } from "@/components/integrations/ai-provider-section"
+import { DatabasesSection } from "@/components/integrations/databases-section"
 
 interface SettingsPanelProps {
   open: boolean
@@ -268,11 +295,18 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
             </div>
           </div>
 
-          <nav className="space-y-1 flex-1 overflow-y-auto p-2">
+          <nav className="space-y-1 flex-1 overflow-y-auto p-2 scrollbar-hide">
             {[
               { id: "profile", icon: User, label: "Profile", description: "Avatar & personal info" },
               { id: "preferences", icon: Sparkles, label: "Preferences", description: "Model & behavior" },
+              { id: "ai-provider", icon: Brain, label: "AI Provider", description: "API key & provider" },
               { id: "notion", icon: Database, label: "Notion", description: "Workspace connection" },
+              { id: "sync", icon: RefreshCw, label: "Sync", description: "Database sync & progress" },
+              { id: "discord", icon: MessageSquare, label: "Discord", description: "Bot & webhooks" },
+              { id: "flowise", icon: Workflow, label: "Flowise", description: "Chatflows" },
+              { id: "n8n", icon: Zap, label: "Automations", description: "Workflow automation" },
+              { id: "mcp", icon: Plug, label: "MCP Tools", description: "Model context protocol" },
+              { id: "databases", icon: Database, label: "Databases", description: "Supabase tables" },
               { id: "appearance", icon: Palette, label: "Appearance", description: "Theme & visuals" },
             ].map((item) => (
               <button
@@ -294,30 +328,32 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
             ))}
           </nav>
 
-          {/* Save Button */}
-          <div className="p-4 mt-auto">
-            <Button
-              onClick={activeTab === "profile" ? saveProfile : savePreferences}
-              disabled={saving}
-              className="w-full bg-red-600 hover:bg-red-700 text-white"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Save Button - Only show for tabs that need it */}
+          {["profile", "preferences", "appearance"].includes(activeTab) && (
+            <div className="p-4 mt-auto">
+              <Button
+                onClick={activeTab === "profile" ? saveProfile : savePreferences}
+                disabled={saving}
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           <div className="p-8 space-y-8">
             {loading && (
               <div className="flex items-center justify-center py-12">
@@ -482,8 +518,39 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
               </div>
             )}
 
+            {/* AI Provider Tab */}
+            {!loading && activeTab === "ai-provider" && <AIProviderSection />}
+
             {/* Notion Tab */}
-            {!loading && activeTab === "notion" && <NotionSection />}
+            {!loading && activeTab === "notion" && <NotionSection onNavigateToSync={() => setActiveTab("sync")} />}
+
+            {/* Sync Tab */}
+            {!loading && activeTab === "sync" && (
+              <Suspense fallback={
+                <div className="space-y-4">
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-64 w-full" />
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              }>
+                <NotionSyncSection />
+              </Suspense>
+            )}
+
+            {/* Discord Tab */}
+            {!loading && activeTab === "discord" && <DiscordSection />}
+
+            {/* Flowise Tab */}
+            {!loading && activeTab === "flowise" && <FlowiseSection />}
+
+            {/* N8n Tab */}
+            {!loading && activeTab === "n8n" && <N8nSection />}
+
+            {/* MCP Tools Tab */}
+            {!loading && activeTab === "mcp" && <MCPSection onNavigateToNotion={() => setActiveTab("notion")} />}
+
+            {/* Databases Tab */}
+            {!loading && activeTab === "databases" && <DatabasesSection />}
 
             {/* Appearance Tab */}
             {!loading && activeTab === "appearance" && (

@@ -47,32 +47,52 @@
   --card-foreground: oklch(0.98 0 0);
   --popover: oklch(0.15 0 0);
   --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.6 0.24 25);
+  --primary: oklch(0.55 0.22 25); /* vibrant red */
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.25 0 0);
+  --secondary: oklch(0.2 0 0);
   --secondary-foreground: oklch(0.98 0 0);
   --muted: oklch(0.2 0 0);
   --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.6 0.24 25);
+  --accent: oklch(0.55 0.22 25);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.5 0.24 25);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.25 0 0);
-  --input: oklch(0.25 0 0);
-  --ring: oklch(0.6 0.24 25);
-  --chart-1: oklch(0.6 0.24 25);
-  --chart-2: oklch(0.4 0 0);
-  --chart-3: oklch(0.55 0 0);
-  --chart-4: oklch(0.75 0.18 25);
-  --chart-5: oklch(0.45 0.2 25);
-  --sidebar: oklch(0.08 0 0);
+  --input: oklch(0.2 0 0);
+  --ring: oklch(0.55 0.22 25);
+  --chart-1: oklch(0.55 0.22 25);
+  --chart-2: oklch(0.35 0 0);
+  --chart-3: oklch(0.45 0 0);
+  --chart-4: oklch(0.7 0.15 25);
+  --chart-5: oklch(0.4 0.18 25);
+  --sidebar: oklch(0.12 0 0); /* dark sidebar */
   --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.6 0.24 25);
+  --sidebar-primary: oklch(0.55 0.22 25);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.18 0 0);
+  --sidebar-accent: oklch(0.2 0 0);
   --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(0.6 0.24 25);
+  --sidebar-border: oklch(0.25 0 0);
+  --sidebar-ring: oklch(0.55 0.22 25);
+}
+
+/* Hide scrollbars globally */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* Apply to ScrollArea components */
+[data-radix-scroll-area-viewport] {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+[data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 /* Eywa Theme - Bioluminescent Avatar-inspired colors */
@@ -113,288 +133,40 @@
 
 @theme inline {
   --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-    /* Mobile touch optimizations */
-    -webkit-overflow-scrolling: touch;
-    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-  }
-  
-  body {
-    @apply bg-background text-foreground;
-    /* Add full-screen background image to body */
-    background-image: url("/assets/backgrounds/authority-bg-1.png");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    
-    /* Mobile optimizations */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    /* Prevent text size adjustment on iOS */
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-    /* Safe area support for iOS notches */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-  
-  /* Ensure minimum touch target size (44x44px for accessibility) */
-  button,
-  a[role="button"],
-  input[type="button"],
-  input[type="submit"],
-  [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-    touch-action: manipulation; /* Remove double-tap zoom delay */
-  }
-  
-  /* Mobile-specific input improvements */
-  input,
-  textarea,
-  select {
-    font-size: 16px; /* Prevent zoom on iOS when focusing inputs */
-    touch-action: manipulation;
-  }
-  
-  /* Improve scrolling on mobile */
-  .scrollable,
-  [data-scrollable] {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain; /* Prevent overscroll bounce */
-  }
+/* Glassmorphism Design System Utilities - Use as className strings, not @apply */
+/* Example: className="backdrop-blur-md backdrop-saturate-150 bg-black/30 border border-red-900/30" */
 
-  /* Adding invisible scrollbars */
-  * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  *::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Scrollable message content scrollbars */
-  .scrollable-message-content {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
-  }
-
-  .scrollable-message-content::-webkit-scrollbar {
-    display: block;
-    width: 6px;
-  }
-
-  .scrollable-message-content::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .scrollable-message-content::-webkit-scrollbar-thumb {
-    background: rgba(75, 85, 99, 0.5);
-    border-radius: 3px;
-  }
-
-  .scrollable-message-content::-webkit-scrollbar-thumb:hover {
-    background: rgba(75, 85, 99, 0.7);
-  }
-
-  /* Enhanced markdown typography */
-  .prose {
-    font-feature-settings: "kern" 1, "liga" 1;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Better paragraph spacing */
-  .prose p + p {
-    margin-top: 1.25rem;
-  }
-
-  /* Improved list spacing */
-  .prose ul > li,
-  .prose ol > li {
-    padding-left: 0.5rem;
-  }
-
-  .prose ul > li::marker,
-  .prose ol > li::marker {
-    color: rgb(248, 113, 113);
-    font-weight: 600;
-  }
-
-  /* Nested lists */
-  .prose ul ul,
-  .prose ol ol,
-  .prose ul ol,
-  .prose ol ul {
-    margin-top: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-
-  /* Better code block styling */
-  .prose pre {
-    font-size: 0.875rem;
-    line-height: 1.7;
-  }
-
-  /* Improved blockquote */
-  .prose blockquote p {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-  }
-
-  .prose blockquote p:last-child {
-    margin-bottom: 0;
-  }
-
-  /* Table improvements */
-  .prose table {
-    font-size: 0.875rem;
-  }
-
-  .prose table tr:nth-child(even) {
-    background-color: rgba(17, 24, 39, 0.3);
-  }
-
-  .prose table tr:hover {
-    background-color: rgba(17, 24, 39, 0.5);
-    transition: background-color 0.2s;
-  }
-
-  /* Better heading spacing */
-  .prose h1 + p,
-  .prose h2 + p,
-  .prose h3 + p,
-  .prose h4 + p {
-    margin-top: 0.75rem;
-  }
-
-  /* Image improvements */
-  .prose img {
-    max-width: 100%;
-    height: auto;
-  }
-
-  /* Link improvements */
-  .prose a {
-    word-break: break-word;
-  }
-
-  /* Better emphasis */
-  .prose em {
-    font-style: italic;
-    color: rgb(229, 231, 235);
-  }
+/* Mobile-specific CSS */
+* {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Adding marquee animation for ticker text */
-@layer utilities {
-  @keyframes marquee {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
-  }
+button,
+[role="button"] {
+  min-height: 44px;
+}
 
-  .animate-marquee {
-    animation: marquee 20s linear infinite;
-  }
-  
-  /* Mobile breakpoint utilities */
-  @media (max-width: 768px) {
-    /* Hide desktop-only elements */
-    .desktop-only {
-      display: none !important;
-    }
-    
-    /* Improve spacing on mobile */
-    .mobile-spacing {
-      padding: 1rem;
-    }
-    
-    /* Full-width on mobile */
-    .mobile-full {
-      width: 100%;
-      max-width: 100%;
-    }
-    
-    /* Stack elements vertically on mobile */
-    .mobile-stack {
-      flex-direction: column;
-    }
-    
-    /* Prevent horizontal scroll on mobile */
-    body {
-      overflow-x: hidden;
-    }
-    
-    /* Improve touch targets on mobile */
-    button,
-    a,
-    [role="button"] {
-      padding: 0.75rem 1rem;
-    }
-  }
-  
-  /* Tablet and up */
-  @media (min-width: 769px) {
-    .mobile-only {
-      display: none !important;
-    }
-  }
-  
-  /* PWA standalone mode adjustments */
-  @media (display-mode: standalone) {
-    body {
-      /* Additional padding for standalone mode */
-      padding-top: calc(env(safe-area-inset-top) + 0.5rem);
-    }
-  }
+input,
+textarea,
+select {
+  font-size: 16px; /* Prevents iOS zoom */
+}
+
+.mobile-only {
+  @apply block md:hidden;
+}
+
+.desktop-only {
+  @apply hidden md:block;
+}
+
+.mobile-stack {
+  @apply flex-col md:flex-row;
+}
+
+.mobile-full {
+  @apply w-full md:w-auto;
 }

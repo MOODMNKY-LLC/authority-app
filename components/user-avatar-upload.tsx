@@ -87,6 +87,9 @@ export function UserAvatarUpload({
       setPreviewUrl(data.url)
       onAvatarUpdate?.(data.url)
 
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent("avatarUpdated", { detail: { url: data.url } }))
+
       toast({
         title: "Avatar Updated",
         description: "Your profile picture has been updated successfully.",
@@ -123,6 +126,9 @@ export function UserAvatarUpload({
 
       setPreviewUrl(null)
       onAvatarUpdate?.(null)
+
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent("avatarUpdated", { detail: { url: null } }))
 
       toast({
         title: "Avatar Removed",

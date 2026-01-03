@@ -78,20 +78,11 @@ export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBa
   }
 
   useEffect(() => {
-    // Initial check
+    // Initial check only - no automatic refresh
     checkVerification()
     
-    // Set up interval - clear any existing interval first
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-    }
-    
-    // Refresh every 60 seconds
-    intervalRef.current = setInterval(() => {
-      checkVerification()
-    }, 60000)
-    
     return () => {
+      // Cleanup on unmount
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
       }
@@ -256,7 +247,7 @@ export function NotionVerificationBadge({ onOpenSettings }: NotionVerificationBa
           )}
           
           <p className="text-xs text-zinc-400 mt-2 pt-2 border-t border-zinc-700">
-            Auto-refreshes every 60 seconds • Click to refresh now or open Settings
+            Click to refresh sync status or open Settings
           </p>
         </div>
       </TooltipContent>

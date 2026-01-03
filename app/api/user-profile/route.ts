@@ -27,6 +27,12 @@ export async function GET() {
       const { count } = await supabase.from("user_profiles").select("*", { count: "exact", head: true })
       const isFirstUser = (count || 0) === 0
 
+      console.log("[Authority] Creating user profile:", { 
+        userId: user.id, 
+        email: user.email, 
+        isFirstUser 
+      })
+
       const { data: newProfile, error: insertError } = await supabase
         .from("user_profiles")
         .insert({
@@ -45,8 +51,11 @@ export async function GET() {
         return NextResponse.json({ profile: null })
       }
 
-      if (isFirstUser) {
-        console.log("[Authority] ✅ First user automatically assigned admin role")
+      if (isFirstUser || newProfile.role === "admin") {
+        console.log("[Authority] ✅ First user automatically assigned admin role:", {
+          userId: user.id,
+          role: newProfile.role
+        })
       }
 
       return NextResponse.json({ profile: newProfile })
@@ -62,26 +71,53 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const supabase = await createServerClient()
+    
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+
     const body = await request.json()
+
+    // Build update object, only including fields that are provided
+    const updateData: any = {
+      user_id: user.id, // Always use authenticated user's ID
+      updated_at: new Date().toISOString(),
+    }
+
+    // Only include fields that are provided in the request
+    if (body.email !== undefined) updateData.email = body.email
+    if (body.display_name !== undefined) updateData.display_name = body.display_name
+    if (body.avatar_url !== undefined) updateData.avatar_url = body.avatar_url
+    if (body.bio !== undefined) updateData.bio = body.bio
 
     const { data: profile, error } = await supabase
       .from("user_profiles")
-      .upsert({
-        user_id: body.user_id,
-        email: body.email,
-        display_name: body.display_name,
-        avatar_url: body.avatar_url,
-        bio: body.bio,
-        updated_at: new Date().toISOString(),
+      .upsert(updateData, {
+        onConflict: "user_id",
       })
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error("[Authority] Error updating user profile:", error)
+      throw error
+    }
 
     return NextResponse.json({ profile })
-  } catch (error) {
+  } catch (error: any) {
     console.error("[Authority] Error updating user profile:", error)
-    return NextResponse.json({ error: "Failed to update user profile" }, { status: 500 })
+    return NextResponse.json(
+      { 
+        error: "Failed to update user profile",
+        details: error.message || "Unknown error"
+      }, 
+      { status: 500 }
+    )
   }
 }

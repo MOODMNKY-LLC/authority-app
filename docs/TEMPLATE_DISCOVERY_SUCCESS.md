@@ -62,3 +62,5 @@ FDW is optional and only needed for advanced RAG features. The core sync system 
 The automatic template discovery is working perfectly! 🎉
 
 
+
+

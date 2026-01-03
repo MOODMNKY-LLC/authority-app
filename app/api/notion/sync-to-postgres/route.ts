@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 import { Client } from "@notionhq/client"
+import { queryNotionDatabase } from "@/lib/notion/query-database"
 import crypto from "crypto"
 
 /**
@@ -172,11 +173,10 @@ async function syncDatabase(
 
   // Query all pages from Notion database with pagination
   while (hasMore) {
-    const query = await notion.databases.query({
-      database_id: databaseId,
+    const query = await queryNotionDatabase(notion, databaseId, {
       page_size: 100,
       start_cursor: startCursor,
-    })
+    }, notionToken)
 
     for (const page of query.results) {
       try {

@@ -22,14 +22,15 @@ import {
   Edit2,
   Save,
   X,
+  ArrowRight,
+  Settings,
 } from "lucide-react"
 import { NotionSyncIndicator } from "@/components/notion-sync-indicator"
-import { NotionSyncButton } from "@/components/notion-sync-button"
-import { UserAvatarUpload } from "@/components/user-avatar-upload"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
-import { Textarea } from "@/components/ui/textarea"
+import { getNotionCapabilities } from "@/lib/notion/capabilities"
+import { Switch } from "@/components/ui/switch"
 
 const ALL_CORE_DATABASES = [
   "Chat Sessions",
@@ -119,19 +120,20 @@ interface UserProfile {
   updated_at: string
 }
 
-export function NotionSection() {
+interface NotionSectionProps {
+  onNavigateToSync?: () => void
+}
+
+export function NotionSection({ onNavigateToSync }: NotionSectionProps = {}) {
   const { toast } = useToast()
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [integrationToken, setIntegrationToken] = useState("")
   const [savingToken, setSavingToken] = useState(false)
-  const [syncedDatabases, setSyncedDatabases] = useState<Record<string, SyncedDatabase>>({})
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [editingProfile, setEditingProfile] = useState(false)
-  const [profileDisplayName, setProfileDisplayName] = useState("")
-  const [profileBio, setProfileBio] = useState("")
-  const [savingProfile, setSavingProfile] = useState(false)
+  const [syncedCount, setSyncedCount] = useState(0)
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false)
+  const [savingAutoSync, setSavingAutoSync] = useState(false)
 
   const fetchUserProfile = async () => {
     try {
@@ -153,30 +155,14 @@ export function NotionSection() {
       const data = await response.json()
       setConnectionStatus(data)
       
-      // Fetch synced databases from sync endpoint to get full details
-      if (data.canSync) {
-        try {
-          const syncResponse = await fetch("/api/notion/sync-databases", { method: "POST" })
-          const syncData = await syncResponse.json()
-          if (syncData.success && syncData.databases) {
-            const formatted: Record<string, SyncedDatabase> = {}
-            Object.entries(syncData.databases).forEach(([name, info]: [string, any]) => {
-              const isCore = ALL_CORE_DATABASES.includes(name)
-              formatted[name] = {
-                id: info.id,
-                name: name,
-                pageCount: info.pageCount,
-                samplePages: syncData.databaseContents?.[name]?.samplePages,
-                isCore: isCore,
-                status: "synced" as const,
-                lastSynced: new Date().toISOString(),
-              }
-            })
-            setSyncedDatabases(formatted)
-          }
-        } catch (syncErr) {
-          console.error("[Authority] Error fetching sync data:", syncErr)
-        }
+      // Only fetch synced count for lightweight display
+      if (data.canSync && data.databases) {
+        setSyncedCount(data.databases.syncedCount || 0)
+      }
+      
+      // Fetch auto sync setting
+      if (data.autoSyncEnabled !== undefined) {
+        setAutoSyncEnabled(data.autoSyncEnabled)
       }
     } catch (error: any) {
       console.error("[Authority] Error fetching connection status:", error)
@@ -199,6 +185,43 @@ export function NotionSection() {
     await fetchConnectionStatus()
   }
 
+  const handleToggleAutoSync = async (enabled: boolean) => {
+    setSavingAutoSync(true)
+    try {
+      const response = await fetch("/api/settings/auto-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      })
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        setAutoSyncEnabled(enabled)
+        toast({
+          title: enabled ? "Auto Sync Enabled" : "Auto Sync Disabled",
+          description: enabled 
+            ? "Your databases will sync automatically every 15 minutes via cron jobs."
+            : "Automatic syncing is now disabled. Use manual sync buttons to sync your databases.",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update auto sync setting",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error("[Authority] Error updating auto sync:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update auto sync setting",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingAutoSync(false)
+    }
+  }
+
   const handleSaveIntegrationToken = async () => {
     if (!integrationToken.trim()) {
       toast({
@@ -211,41 +234,29 @@ export function NotionSection() {
 
     setSavingToken(true)
     try {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        toast({
-          title: "Not Authenticated",
-          description: "Please log in first",
-          variant: "destructive",
-        })
-        return
-      }
-
-      const { error } = await supabase
-        .from("user_settings")
-        .upsert(
-          {
-            user_id: user.id,
-            notion_token: integrationToken.trim(),
-          },
-          {
-            onConflict: "user_id",
-          },
-        )
-
-      if (error) throw error
-
-      toast({
-        title: "Token Saved",
-        description: "Integration token saved successfully",
+      // Save and verify token via API (which handles encryption)
+      const response = await fetch("/api/integrations/notion-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: integrationToken.trim() }),
       })
 
-      setIntegrationToken("")
-      await fetchConnectionStatus()
+      if (response.ok) {
+        const data = await response.json()
+        toast({
+          title: "Token Saved & Verified",
+          description: data.verified
+            ? `Integration token verified successfully${data.userInfo?.name ? ` (${data.userInfo.name})` : ""}`
+            : "Token saved but verification failed. Please check your token.",
+          variant: data.verified ? "default" : "destructive",
+        })
+
+        setIntegrationToken("")
+        await fetchConnectionStatus()
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to save token")
+      }
     } catch (error: any) {
       console.error("[Authority] Error saving integration token:", error)
       toast({
@@ -261,15 +272,39 @@ export function NotionSection() {
   const handleNotionOAuth = async () => {
     try {
       const supabase = createClient()
-      let origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || window.location.origin
+      let origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || 
+                   (typeof window !== 'undefined' ? window.location.origin : '')
+      
+      // Fallback if origin is still undefined
+      if (!origin || origin === 'undefined') {
+        origin = typeof window !== 'undefined' 
+          ? `${window.location.protocol}//${window.location.host}`
+          : 'https://localhost:3000'
+      }
+      
+      // Normalize: replace 0.0.0.0 with localhost
       if (origin.includes("0.0.0.0")) {
         origin = origin.replace("0.0.0.0", "localhost")
       }
+      
+      // Ensure HTTPS is used if the page is loaded over HTTPS (for dev:https)
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:' && origin.startsWith('http:')) {
+        origin = origin.replace('http:', 'https:')
+      }
+
+      const redirectTo = `${origin}/auth/callback?next=/admin`
+      
+      console.log("[Authority] Notion OAuth (Settings) - Redirect URL:", {
+        origin,
+        redirectTo,
+        windowProtocol: typeof window !== 'undefined' ? window.location.protocol : 'N/A',
+        environment: process.env.NODE_ENV,
+      })
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "notion" as any,
         options: {
-          redirectTo: `${origin}/auth/callback?next=/admin`,
+          redirectTo,
         },
       })
       if (error) throw error
@@ -300,8 +335,8 @@ export function NotionSection() {
 
   const conn = connectionStatus.connection
   const user = connectionStatus.user
-  const syncedCount = Object.keys(syncedDatabases).length
-  const showTokenInput = !conn?.oauth.connected || !conn?.token.valid
+  // Always show integration token input - users can add it even if OAuth is connected
+  const showTokenInput = true
 
   return (
     <div className="space-y-6">
@@ -440,62 +475,105 @@ export function NotionSection() {
             )}
           </div>
 
-          {/* Integration Token Input - Inline */}
-          {showTokenInput && (
-            <div className="p-4 rounded-lg bg-zinc-950/50 border border-zinc-800/50 space-y-3">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="integration-token" className="text-sm font-medium text-white">
-                  Integration Token (Optional)
-                </Label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className="h-3 w-3 text-zinc-500 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="font-semibold mb-1">Integration Token</p>
-                    <p className="text-xs mb-2">
-                      Personal integration tokens provide more reliable access than OAuth. Create one at notion.so/my-integrations and share your databases with the integration.
+          {/* Integration Token Input - Enhanced with Feature Explanation */}
+          {/* Always show integration token input for users to add their personal token */}
+          {showTokenInput && !conn?.integration.connected && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-900/30">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <Key className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-white mb-1">Enhanced Features with Integration Token</h4>
+                    <p className="text-xs text-zinc-400 mb-3">
+                      Adding an integration token unlocks additional capabilities and improves reliability.
                     </p>
-                    <p className="text-xs text-zinc-300">
-                      Recommended if OAuth token is not accessible or as a backup authentication method.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                        <span className="text-zinc-300">More reliable API access</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                        <span className="text-zinc-300">Access to private pages</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                        <span className="text-zinc-300">Better rate limits</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                        <span className="text-zinc-300">Webhook management</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                        <span className="text-zinc-300">Link preview/unfurl support</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                        <span className="text-zinc-300">Advanced sync features</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Input
-                  id="integration-token"
-                  type="password"
-                  value={integrationToken}
-                  onChange={(e) => setIntegrationToken(e.target.value)}
-                  placeholder="secret_..."
-                  className="bg-zinc-900 border-zinc-800 font-mono text-sm"
-                />
-                <Button
-                  onClick={handleSaveIntegrationToken}
-                  disabled={savingToken || !integrationToken.trim()}
-                  size="sm"
-                  className="bg-red-600 hover:bg-red-700 text-white shrink-0"
-                >
-                  {savingToken ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Save"
-                  )}
-                </Button>
+
+              <div className="p-4 rounded-lg bg-zinc-950/50 border border-zinc-800/50 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="integration-token" className="text-sm font-medium text-white">
+                    Integration Token
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3 w-3 text-zinc-500 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="font-semibold mb-1">Integration Token</p>
+                      <p className="text-xs mb-2">
+                        Personal integration tokens provide more reliable access than OAuth. Create one at notion.so/my-integrations and share your databases with the integration.
+                      </p>
+                      <p className="text-xs text-zinc-300">
+                        Recommended if OAuth token is not accessible or as a backup authentication method.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="integration-token"
+                    type="password"
+                    value={integrationToken}
+                    onChange={(e) => setIntegrationToken(e.target.value)}
+                    placeholder="secret_..."
+                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                  />
+                  <Button
+                    onClick={handleSaveIntegrationToken}
+                    disabled={savingToken || !integrationToken.trim()}
+                    size="sm"
+                    className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+                  >
+                    {savingToken ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  Create integration:{" "}
+                  <a
+                    href="https://www.notion.so/my-integrations"
+                    target="_blank"
+                    className="text-red-400 hover:underline inline-flex items-center gap-1"
+                    rel="noreferrer"
+                  >
+                    notion.so/my-integrations
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </p>
               </div>
-              <p className="text-xs text-zinc-500">
-                Create integration:{" "}
-                <a
-                  href="https://www.notion.so/my-integrations"
-                  target="_blank"
-                  className="text-red-400 hover:underline inline-flex items-center gap-1"
-                  rel="noreferrer"
-                >
-                  notion.so/my-integrations
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </p>
             </div>
           )}
 
@@ -517,186 +595,71 @@ export function NotionSection() {
         </CardContent>
       </Card>
 
-      {/* Database Sync */}
-      <Card className="bg-zinc-900/50 border-zinc-800/50 backdrop-blur">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-white flex items-center gap-2">
-              <Database className="h-5 w-5 text-red-500" />
-              Database Sync
-            </CardTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 text-zinc-500 cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p className="font-semibold mb-1">Database Sync</p>
-                <p className="text-xs">
-                  Syncs databases from your duplicated Authority template. These databases power character creation, world-building, story tracking, and chat history storage in the app.
+      {/* View Sync Details Button */}
+      {syncedCount > 0 && onNavigateToSync && (
+        <Card className="bg-zinc-900/50 border-zinc-800/50 backdrop-blur">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-1">Sync Management</h3>
+                <p className="text-sm text-zinc-400">
+                  View detailed sync progress, manage seed data, configure webhooks, and more.
                 </p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <CardDescription>
-            Sync databases from your duplicated Authority template
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <NotionSyncButton
-            onSyncComplete={async () => {
-              await fetchConnectionStatus()
-            }}
-          />
-
-          {/* Synced Databases Table */}
-          {syncedCount > 0 && (
-            <div className="pt-4 border-t border-zinc-800">
-              <div className="flex items-center justify-between mb-4">
-                <Label className="text-sm font-medium text-zinc-300">
-                  Synced Databases ({syncedCount})
-                </Label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className="h-3 w-3 text-zinc-500 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p className="font-semibold mb-1">Synced Databases</p>
-                    <p className="text-xs">
-                      These databases from your Authority template are synced and ready for use. They power character creation, world-building, story tracking, and chat history storage.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
               </div>
-              <div className="rounded-lg border border-zinc-800/50 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-zinc-950/50 border-b border-zinc-800/50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                          Database Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                          Pages
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                          Database ID
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                          Type
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/50">
-                      {Object.values(syncedDatabases).map((db) => {
-                        const isCore = db.isCore ?? ALL_CORE_DATABASES.includes(db.name)
-                        const status = db.status || "synced"
-                        return (
-                          <tr
-                            key={db.id}
-                            className="hover:bg-zinc-950/30 transition-colors"
-                          >
-                            {/* Status Indicator */}
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <NotionSyncIndicator synced={status === "synced"} />
-                                <span
-                                  className={cn(
-                                    "text-xs font-medium",
-                                    status === "synced"
-                                      ? "text-green-400"
-                                      : status === "pending"
-                                        ? "text-yellow-400"
-                                        : "text-red-400",
-                                  )}
-                                >
-                                  {status === "synced"
-                                    ? "Synced"
-                                    : status === "pending"
-                                      ? "Pending"
-                                      : "Error"}
-                                </span>
-                              </div>
-                            </td>
-                            {/* Database Name */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-white">{db.name}</span>
-                                {isCore && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] px-1.5 py-0 bg-blue-900/20 border-blue-700 text-blue-400"
-                                  >
-                                    Core
-                                  </Badge>
-                                )}
-                              </div>
-                            </td>
-                            {/* Page Count */}
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              {db.pageCount !== undefined ? (
-                                <span className="text-sm text-zinc-300">
-                                  {db.pageCount.toLocaleString()} {db.pageCount === 1 ? "page" : "pages"}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-zinc-500">—</span>
-                              )}
-                            </td>
-                            {/* Database ID */}
-                            <td className="px-4 py-3">
-                              <code className="text-xs text-zinc-400 bg-zinc-900/50 px-2 py-1 rounded font-mono">
-                                {db.id.substring(0, 8)}...
-                              </code>
-                            </td>
-                            {/* Type */}
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-xs",
-                                  isCore
-                                    ? "bg-blue-900/20 border-blue-700 text-blue-400"
-                                    : "bg-zinc-900/50 border-zinc-700 text-zinc-400",
-                                )}
-                              >
-                                {isCore ? "Core" : "Custom"}
-                              </Badge>
-                            </td>
-                            {/* Actions */}
-                            <td className="px-4 py-3 whitespace-nowrap text-right">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <a
-                                    href={`https://notion.so/${db.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-zinc-400 hover:text-red-400 transition-colors"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                    <span className="text-xs">Open</span>
-                                  </a>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">Open in Notion</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <Button
+                onClick={onNavigateToSync}
+                className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+              >
+                View Sync Details
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Auto Sync Toggle */}
+      {connectionStatus?.canSync && (
+        <Card className="bg-zinc-900/50 border-zinc-800/50 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-400" />
+              Automatic Syncing
+            </CardTitle>
+            <CardDescription className="text-zinc-400">
+              Enable automatic syncing via cron jobs (runs every 15 minutes)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-950/50 border border-zinc-800/50">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Label htmlFor="auto-sync" className="text-sm font-medium text-white cursor-pointer">
+                    Enable Auto Sync
+                  </Label>
+                  {autoSyncEnabled && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-green-900/20 border-green-700 text-green-400">
+                      Active
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-400">
+                  {autoSyncEnabled 
+                    ? "Your databases will sync automatically every 15 minutes. You can still use manual sync buttons at any time."
+                    : "Automatic syncing is disabled. Use manual sync buttons to sync your databases."}
+                </p>
+              </div>
+              <Switch
+                id="auto-sync"
+                checked={autoSyncEnabled}
+                onCheckedChange={handleToggleAutoSync}
+                disabled={savingAutoSync || loading}
+                className="shrink-0"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

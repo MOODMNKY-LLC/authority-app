@@ -325,11 +325,17 @@ email_optional = false
 # Notion OAuth configuration for local development
 [auth.external.notion]
 enabled = true
-client_id = "2dcd872b-594c-80d4-853c-0037c4a41403"
+client_id = "2dcd872b-594c-801d-9629-00377ca43eaa"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(NOTION_OAUTH_CLIENT_SECRET)"
 # Overrides the default auth redirectUrl for local development
-redirect_uri = "https://127.0.0.1:54510/auth/v1/callback"
+# IMPORTANT: This redirect_uri MUST match what's registered in Notion integration settings
+# API port is 54510 (see [api] section above)
+# Add BOTH of these to Notion integration redirect URIs:
+# - https://127.0.0.1:54510/auth/v1/callback
+# - https://localhost:54510/auth/v1/callback
+# Using localhost is preferred for browser compatibility
+redirect_uri = "https://localhost:54510/auth/v1/callback"
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
 # or any other third-party OIDC providers.
 url = ""

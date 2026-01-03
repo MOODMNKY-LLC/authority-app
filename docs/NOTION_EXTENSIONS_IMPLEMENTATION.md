@@ -108,3 +108,5 @@ SELECT * FROM sync_all_notion_databases('user-id');
 5. **Smart recommendations** - "Characters you haven't used in a while"
 
 
+
+

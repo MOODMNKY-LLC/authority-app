@@ -19,7 +19,9 @@ export function SocialAuth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "notion" as any,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: typeof window !== 'undefined' 
+            ? `${window.location.origin}/auth/callback`
+            : `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
         },
       })
       if (error) throw error

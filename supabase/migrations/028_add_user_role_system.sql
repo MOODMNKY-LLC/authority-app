@@ -54,3 +54,5 @@ COMMENT ON COLUMN user_profiles.role IS 'User role: pending (awaiting activation
 COMMENT ON FUNCTION assign_admin_to_first_user() IS 'Automatically assigns admin role to the first user created in the system';
 
 
+
+

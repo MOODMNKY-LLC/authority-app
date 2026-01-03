@@ -10,8 +10,16 @@ export async function GET(request: Request) {
   // Also use environment variable if available for production consistency
   // In production, prefer NEXT_PUBLIC_SITE_URL, fallback to Vercel URL, then raw origin
   let origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || 
-               process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+               (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
                rawOrigin
+  
+  // Validate origin is not undefined/null
+  if (!origin || origin === 'undefined' || origin === 'null') {
+    console.error("[Authority] Invalid origin in callback:", { rawOrigin, envUrl: process.env.NEXT_PUBLIC_SITE_URL })
+    // Fallback for local development
+    origin = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://localhost:3000'
+  }
+  
   if (origin.includes("0.0.0.0")) {
     origin = origin.replace("0.0.0.0", "localhost")
   }
@@ -19,6 +27,12 @@ export async function GET(request: Request) {
   // Ensure HTTPS in production
   if (process.env.NODE_ENV === "production" && !origin.startsWith("https://")) {
     origin = origin.replace(/^http:/, "https:")
+  }
+  
+  // Final validation
+  if (!origin || !origin.startsWith('http')) {
+    console.error("[Authority] Invalid origin after normalization:", origin)
+    origin = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://localhost:3000'
   }
   
   // if "next" is in param, use it as the redirect URL
@@ -73,19 +87,51 @@ export async function GET(request: Request) {
 
         // If user authenticated with Notion OAuth, try to store token
         if (provider === "notion" && tokenToStore) {
+          // Verify this is actually a Notion OAuth token by testing it with Notion API
+          // This ensures we're storing a valid Notion token, not Supabase's token
+          let verifiedNotionToken: string | null = null
+          
+          try {
+            const testResponse = await fetch("https://api.notion.com/v1/users/me", {
+              headers: {
+                Authorization: `Bearer ${tokenToStore}`,
+                "Notion-Version": "2022-06-28",
+              },
+            })
+            
+            if (testResponse.ok) {
+              verifiedNotionToken = tokenToStore
+              const userData = await testResponse.json()
+              console.log("[Authority] ✅ Verified Notion OAuth token - valid for Notion API")
+              console.log("[Authority] Notion user:", userData.name || userData.id)
+            } else {
+              console.warn("[Authority] ⚠️ Token from session is not a valid Notion token (may be Supabase token)")
+              // Token might be Supabase's token, not Notion's
+              // We'll still store it but it won't work for MCP
+            }
+          } catch (error) {
+            console.error("[Authority] Error verifying Notion token:", error)
+          }
+          
+          // Store the token (even if verification failed, it might work later)
           await supabase
             .from("user_settings")
             .upsert(
               {
                 user_id: data.user.id,
-                notion_access_token: tokenToStore,
+                notion_access_token: verifiedNotionToken || tokenToStore,
                 notion_workspace_id: workspaceId,
               },
               {
                 onConflict: "user_id",
               },
             )
-          console.log("[Authority] ✅ Extracted Notion OAuth token from session and stored in user_settings")
+          
+          if (verifiedNotionToken) {
+            console.log("[Authority] ✅ Stored verified Notion OAuth token for MCP use")
+          } else {
+            console.warn("[Authority] ⚠️ Stored token may not be valid for Notion MCP. User may need to re-authenticate.")
+          }
           console.log("[Authority] Token source:", providerToken ? "session.provider_token" : "user metadata fallback")
           
           // Auto-discover template page (non-blocking, fire-and-forget)

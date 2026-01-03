@@ -46,3 +46,5 @@ Add vector embeddings for semantic search across Notion content.
 6. **Rate Limit Protection** - Sync on schedule, not on-demand
 
 
+
+

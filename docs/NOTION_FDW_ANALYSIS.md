@@ -257,3 +257,5 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 - Perfect for RAG content extraction
 
 
+
+

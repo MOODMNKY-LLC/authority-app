@@ -77,3 +77,5 @@ If wrappers extension is not available in production, you can:
 The app will function normally without FDW - it's an enhancement, not a requirement.
 
 
+
+

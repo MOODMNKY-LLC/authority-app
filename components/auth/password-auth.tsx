@@ -39,7 +39,9 @@ export function PasswordAuth({ compact = false }: { compact?: boolean }) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: typeof window !== 'undefined' 
+              ? `${window.location.origin}/auth/callback`
+              : `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
           },
         })
         if (error) throw error
