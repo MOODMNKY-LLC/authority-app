@@ -18,6 +18,8 @@ import {
   Brain,
   RefreshCw,
 } from "lucide-react"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,6 +65,7 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
   const { toast } = useToast()
+  const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState("profile")
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -270,6 +273,218 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
 
   if (!open) return null
 
+  // Mobile: Use Sheet component
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="w-full sm:w-[400px] p-0 overflow-hidden">
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="p-4 border-b border-zinc-800/50 shrink-0">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-red-500" />
+                  Settings
+                </h2>
+              </div>
+            </div>
+
+            {/* Content Area - Show selected tab content */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide p-4">
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+                </div>
+              )}
+
+              {!loading && activeTab === "profile" && (
+                <div className="space-y-6">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-2xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <User className="h-6 w-6 text-red-500" />
+                      Profile Settings
+                    </h2>
+                    <p className="text-sm text-zinc-400">
+                      Manage your profile information and avatar
+                    </p>
+                  </div>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">Display Name</CardTitle>
+                      <CardDescription>This is how your name appears to others</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Input
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Enter your display name"
+                        className="bg-zinc-950 border-zinc-800 text-white min-h-[48px]"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">Bio</CardTitle>
+                      <CardDescription>Tell others about yourself</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Textarea
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        placeholder="Write a short bio..."
+                        className="bg-zinc-950 border-zinc-800 text-white min-h-[120px]"
+                        rows={4}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">Avatar</CardTitle>
+                      <CardDescription>Upload a profile picture</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <UserAvatarUpload
+                        currentAvatarUrl={avatarUrl}
+                        onAvatarChange={setAvatarUrl}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {!loading && activeTab === "preferences" && (
+                <div className="space-y-6">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-2xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Sparkles className="h-6 w-6 text-red-500" />
+                      AI Preferences
+                    </h2>
+                    <p className="text-sm text-zinc-400">
+                      Configure your AI model and behavior settings
+                    </p>
+                  </div>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">Default Model</CardTitle>
+                      <CardDescription>Choose your preferred AI model</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Select value={defaultModel} onValueChange={setDefaultModel}>
+                        <SelectTrigger className="bg-zinc-950 border-zinc-800 text-white min-h-[48px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="openai/gpt-4o-mini">GPT-4o Mini</SelectItem>
+                          <SelectItem value="openai/gpt-4o">GPT-4o</SelectItem>
+                          <SelectItem value="openai/gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">System Prompt</CardTitle>
+                      <CardDescription>Customize AI behavior</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Textarea
+                        value={systemPrompt}
+                        onChange={(e) => setSystemPrompt(e.target.value)}
+                        placeholder="Enter system prompt..."
+                        className="bg-zinc-950 border-zinc-800 text-white min-h-[120px]"
+                        rows={6}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {!loading && activeTab === "ai-provider" && <AIProviderSection />}
+              {!loading && activeTab === "notion" && <NotionSection onNavigateToSync={() => setActiveTab("sync")} />}
+              {!loading && activeTab === "sync" && (
+                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                  <NotionSyncSection />
+                </Suspense>
+              )}
+              {!loading && activeTab === "discord" && <DiscordSection />}
+              {!loading && activeTab === "flowise" && <FlowiseSection />}
+              {!loading && activeTab === "n8n" && <N8nSection />}
+              {!loading && activeTab === "mcp" && <MCPSection onNavigateToNotion={() => setActiveTab("notion")} />}
+              {!loading && activeTab === "databases" && <DatabasesSection />}
+              {!loading && activeTab === "appearance" && (
+                <div className="space-y-6">
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-red-900/20 to-zinc-900/20 border border-red-900/30">
+                    <h2 className="text-2xl font-semibold text-white mb-2 flex items-center gap-2">
+                      <Palette className="h-6 w-6 text-red-500" />
+                      Appearance
+                    </h2>
+                    <p className="text-sm text-zinc-400">
+                      Customize the look and feel of your workspace
+                    </p>
+                  </div>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">Theme</CardTitle>
+                      <CardDescription>Choose your color theme</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ThemeSelector value={theme as Theme} onChange={setTheme} />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-zinc-900/50 border-zinc-800/50">
+                    <CardHeader>
+                      <CardTitle className="text-white">Background</CardTitle>
+                      <CardDescription>Set a custom background image</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <BackgroundUpload
+                        currentBackground={backgroundImage}
+                        customBackgrounds={customBackgrounds}
+                        onBackgroundChange={setBackgroundImage}
+                        onDeleteBackground={handleDeleteBackground}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+
+            {/* Save Button */}
+            {["profile", "preferences", "appearance"].includes(activeTab) && (
+              <div className="p-4 border-t border-zinc-800/50 shrink-0">
+                <Button
+                  onClick={activeTab === "profile" ? saveProfile : savePreferences}
+                  disabled={saving}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white min-h-[48px]"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  // Desktop: Original overlay layout
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 md:p-4 touch-none">
       <div 
@@ -313,7 +528,7 @@ export function SettingsPanel({ open, onOpenChange }: SettingsPanelProps) {
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                  "w-full flex items-start gap-3 px-3 py-2.5 rounded-md text-sm transition-colors group",
+                  "w-full flex items-start gap-3 px-3 py-2.5 rounded-md text-sm transition-colors group min-h-[44px]",
                   activeTab === item.id
                     ? "bg-red-900/20 text-red-400 border border-red-900/30"
                     : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200",

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import {
   Sidebar,
   SidebarContent,
@@ -13,7 +14,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
+import { SheetClose } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -72,6 +75,7 @@ interface AppSidebarProps {
 export function AppSidebar({ onOpenSettings, onOpenImageGallery, onOpenAdminPanel }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { isMobile } = useSidebar()
   const [searchQuery, setSearchQuery] = useState("")
   const [isForgeExpanded, setIsForgeExpanded] = useState(false)
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true)
@@ -389,6 +393,7 @@ function ChatSidebarContent({
   onSelectChat,
   onForgeNavigation,
 }: any) {
+  const { isMobile } = useSidebar()
   return (
     <>
       <SidebarGroup>
@@ -444,44 +449,134 @@ function ChatSidebarContent({
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => onForgeNavigation("character")} className="gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>Character Forge</span>
+                  <SidebarMenuButton 
+                    onClick={() => onForgeNavigation("character")} 
+                    className="gap-2 min-h-[44px]"
+                    asChild={isMobile}
+                  >
+                    {isMobile ? (
+                      <SheetClose asChild>
+                        <Link href="/forge/character">
+                          <Users className="h-4 w-4" />
+                          <span>Character Forge</span>
+                        </Link>
+                      </SheetClose>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4" />
+                        <span>Character Forge</span>
+                      </>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => onForgeNavigation("world")} className="gap-2">
-                    <Globe className="h-4 w-4" />
-                    <span>World Forge</span>
+                  <SidebarMenuButton 
+                    onClick={() => onForgeNavigation("world")} 
+                    className="gap-2 min-h-[44px]"
+                    asChild={isMobile}
+                  >
+                    {isMobile ? (
+                      <SheetClose asChild>
+                        <Link href="/forge/world">
+                          <Globe className="h-4 w-4" />
+                          <span>World Forge</span>
+                        </Link>
+                      </SheetClose>
+                    ) : (
+                      <>
+                        <Globe className="h-4 w-4" />
+                        <span>World Forge</span>
+                      </>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => onForgeNavigation("storyline")} className="gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    <span>Storyline Forge</span>
+                  <SidebarMenuButton 
+                    onClick={() => onForgeNavigation("storyline")} 
+                    className="gap-2 min-h-[44px]"
+                    asChild={isMobile}
+                  >
+                    {isMobile ? (
+                      <SheetClose asChild>
+                        <Link href="/forge/storyline">
+                          <BookOpen className="h-4 w-4" />
+                          <span>Storyline Forge</span>
+                        </Link>
+                      </SheetClose>
+                    ) : (
+                      <>
+                        <BookOpen className="h-4 w-4" />
+                        <span>Storyline Forge</span>
+                      </>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => onForgeNavigation("magic")} className="gap-2">
-                    <Wand2 className="h-4 w-4" />
-                    <span>Magic System</span>
+                  <SidebarMenuButton 
+                    onClick={() => onForgeNavigation("magic")} 
+                    className="gap-2 min-h-[44px]"
+                    asChild={isMobile}
+                  >
+                    {isMobile ? (
+                      <SheetClose asChild>
+                        <Link href="/forge/magic">
+                          <Wand2 className="h-4 w-4" />
+                          <span>Magic System</span>
+                        </Link>
+                      </SheetClose>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4" />
+                        <span>Magic System</span>
+                      </>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => onForgeNavigation("faction")} className="gap-2">
-                    <Shield className="h-4 w-4" />
-                    <span>Faction Forge</span>
+                  <SidebarMenuButton 
+                    onClick={() => onForgeNavigation("faction")} 
+                    className="gap-2 min-h-[44px]"
+                    asChild={isMobile}
+                  >
+                    {isMobile ? (
+                      <SheetClose asChild>
+                        <Link href="/forge/faction">
+                          <Shield className="h-4 w-4" />
+                          <span>Faction Forge</span>
+                        </Link>
+                      </SheetClose>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4" />
+                        <span>Faction Forge</span>
+                      </>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => onForgeNavigation("lore")} className="gap-2">
-                    <Scroll className="h-4 w-4" />
-                    <span>Lore & History</span>
+                  <SidebarMenuButton 
+                    onClick={() => onForgeNavigation("lore")} 
+                    className="gap-2 min-h-[44px]"
+                    asChild={isMobile}
+                  >
+                    {isMobile ? (
+                      <SheetClose asChild>
+                        <Link href="/forge/lore">
+                          <Scroll className="h-4 w-4" />
+                          <span>Lore & History</span>
+                        </Link>
+                      </SheetClose>
+                    ) : (
+                      <>
+                        <Scroll className="h-4 w-4" />
+                        <span>Lore & History</span>
+                      </>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -512,7 +607,7 @@ function ChatSidebarContent({
                   <>
                     {projects.slice(0, 5).map((project: any) => (
                       <SidebarMenuItem key={project.id}>
-                        <SidebarMenuButton onClick={() => onSelectProject(project)} className="gap-2">
+                        <SidebarMenuButton onClick={() => onSelectProject(project)} className="gap-2 min-h-[44px]">
                           <span className="text-lg">{project.icon}</span>
                           <span className="flex-1 truncate">{project.name}</span>
                         </SidebarMenuButton>
@@ -537,10 +632,26 @@ function ChatSidebarContent({
           <SidebarMenu>
             {filteredChats.slice(0, 10).map((chat: any) => (
               <SidebarMenuItem key={chat.id}>
-                <SidebarMenuButton onClick={() => onSelectChat(chat)} className="gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="flex-1 truncate">{chat.title}</span>
-                  {chat.is_pinned && <Pin className="h-3 w-3 text-red-400" />}
+                <SidebarMenuButton 
+                  onClick={() => onSelectChat(chat)} 
+                  className="gap-2 min-h-[44px]"
+                  asChild={isMobile && chat.id}
+                >
+                  {isMobile && chat.id ? (
+                    <SheetClose asChild>
+                      <Link href={`/chat/${chat.id}`}>
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="flex-1 truncate">{chat.title}</span>
+                        {chat.is_pinned && <Pin className="h-3 w-3 text-red-400" />}
+                      </Link>
+                    </SheetClose>
+                  ) : (
+                    <>
+                      <MessageSquare className="h-4 w-4" />
+                      <span className="flex-1 truncate">{chat.title}</span>
+                      {chat.is_pinned && <Pin className="h-3 w-3 text-red-400" />}
+                    </>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
@@ -553,6 +664,21 @@ function ChatSidebarContent({
 
 // Forge-specific sidebar content
 function ForgeSidebarContent({ forgeType, onNavigate }: any) {
+  const { isMobile } = useSidebar()
+  
+  const forgeItems = [
+    { type: "character", icon: Users, label: "Character Forge" },
+    { type: "world", icon: Globe, label: "World Forge" },
+    { type: "storyline", icon: BookOpen, label: "Storyline Forge" },
+    { type: "magic", icon: Wand2, label: "Magic System" },
+    { type: "faction", icon: Shield, label: "Faction Forge" },
+    { type: "lore", icon: Scroll, label: "Lore & History" },
+  ]
+
+  const handleNavigate = (type: string) => {
+    onNavigate(type)
+  }
+
   return (
     <>
       <SidebarGroup>
@@ -561,47 +687,29 @@ function ForgeSidebarContent({ forgeType, onNavigate }: any) {
         </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => onNavigate("character")} className="gap-2">
-                <Users className="h-4 w-4" />
-                <span>Character Forge</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => onNavigate("world")} className="gap-2">
-                <Globe className="h-4 w-4" />
-                <span>World Forge</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => onNavigate("storyline")} className="gap-2">
-                <BookOpen className="h-4 w-4" />
-                <span>Storyline Forge</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => onNavigate("magic")} className="gap-2">
-                <Wand2 className="h-4 w-4" />
-                <span>Magic System</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => onNavigate("faction")} className="gap-2">
-                <Shield className="h-4 w-4" />
-                <span>Faction Forge</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => onNavigate("lore")} className="gap-2">
-                <Scroll className="h-4 w-4" />
-                <span>Lore & History</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {forgeItems.map((item) => (
+              <SidebarMenuItem key={item.type}>
+                <SidebarMenuButton 
+                  onClick={() => handleNavigate(item.type)} 
+                  className="gap-2 min-h-[44px]"
+                  asChild={isMobile}
+                >
+                  {isMobile ? (
+                    <SheetClose asChild>
+                      <Link href={`/forge/${item.type}`}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SheetClose>
+                  ) : (
+                    <>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>

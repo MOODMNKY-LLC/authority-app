@@ -3,6 +3,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Mobile viewport height fix - use dvh (dynamic viewport height) */
+:root {
+  --vh: 1vh;
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .safe-area-inset-top {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .safe-area-inset-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  .safe-area-inset-left {
+    padding-left: max(env(safe-area-inset-left), 0px);
+  }
+  .safe-area-inset-right {
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+}
+
 :root {
   /* Light mode colors */
   --background: oklch(0.98 0 0); /* light background */

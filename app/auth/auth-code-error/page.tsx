@@ -1,76 +1,72 @@
-"use client"
-
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, RefreshCw } from "lucide-react"
+import Link from "next/link"
 
 export default function AuthCodeErrorPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black p-4">
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: "url('/assets/backgrounds/authority-bg-2.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
-        }}
-      />
-      <div className="absolute inset-0 bg-black/60" />
-
-      <Card className="relative w-full max-w-md border-red-900/30 bg-zinc-950/90 backdrop-blur-xl shadow-2xl z-10">
-        <CardHeader className="space-y-3 pb-4">
-          <div className="flex flex-col items-center justify-center gap-3">
-            <div className="relative h-16 w-16">
-              <Image
-                src="/assets/icons/authority-icon_no_background_upscaled.png"
-                alt="Authority"
-                width={64}
-                height={64}
-                className="object-contain opacity-50"
-                priority
-                unoptimized={false}
-                onError={(e) => {
-                  // Fallback to SVG if PNG fails
-                  const target = e.target as HTMLImageElement
-                  if (!target.src.includes('.svg')) {
-                    target.src = '/assets/icons/authority-icon_no_background_upscaled.svg'
-                  }
-                }}
-              />
-              <AlertCircle className="absolute -top-1 -right-1 h-6 w-6 text-red-600" />
-            </div>
-            <CardTitle className="text-2xl text-center text-white font-semibold">Authentication Error</CardTitle>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 p-4">
+      <Card className="w-full max-w-md border-red-900/30 bg-zinc-950/90 backdrop-blur-xl shadow-2xl">
+        <CardHeader className="space-y-3 pb-8">
+          <div className="flex items-center justify-center mb-2">
+            <AlertCircle className="h-12 w-12 text-red-500" />
           </div>
+          <CardTitle className="text-2xl text-center text-white font-semibold">
+            Authentication Error
+          </CardTitle>
           <CardDescription className="text-center text-zinc-400">
-            There was a problem completing your authentication
+            Something went wrong during authentication
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          <div className="space-y-2 text-sm text-zinc-300">
-            <p>We couldn't complete your sign-in process. This could happen if:</p>
-            <ul className="list-disc list-inside space-y-1 ml-2 text-zinc-400">
-              <li>The authentication code expired</li>
-              <li>The authentication code was already used</li>
-              <li>There was a network error</li>
-              <li>The redirect URL doesn't match your configuration</li>
+        <CardContent className="space-y-6">
+          <Alert variant="destructive" className="bg-red-950/50 border-red-900">
+            <AlertDescription className="text-sm">
+              We encountered an issue while processing your authentication request. 
+              This could be due to an expired authorization code or a configuration issue.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-white">What you can do:</h3>
+            <ul className="space-y-2 text-sm text-zinc-400 list-disc list-inside">
+              <li>Try signing in again</li>
+              <li>Clear your browser cookies and cache</li>
+              <li>Check that your Notion integration is properly configured</li>
+              <li>Verify that redirect URLs are correctly set in both Notion and Supabase</li>
             </ul>
           </div>
 
-          <div className="pt-4 space-y-2">
-            <Button asChild className="w-full bg-red-600 hover:bg-red-700 text-white">
-              <Link href="/auth/login">Try Again</Link>
+          <div className="flex flex-col gap-3">
+            <Button
+              asChild
+              className="w-full bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Link href="/auth/login">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Try Again
+              </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full border-zinc-800 text-zinc-300 hover:bg-zinc-900">
-              <Link href="/">Go Home</Link>
+            
+            <Button
+              asChild
+              variant="outline"
+              className="w-full border-zinc-800 text-zinc-300 hover:bg-zinc-900"
+            >
+              <Link href="/">
+                Go to Home
+              </Link>
             </Button>
+          </div>
+
+          <div className="pt-4 border-t border-zinc-800">
+            <p className="text-xs text-center text-zinc-500">
+              If this problem persists, please contact support with the error details.
+            </p>
           </div>
         </CardContent>
       </Card>
     </div>
   )
 }
-

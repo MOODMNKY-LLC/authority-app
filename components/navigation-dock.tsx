@@ -18,6 +18,7 @@ import {
   Shield,
   Scroll,
 } from "lucide-react"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface DockItem {
   id: string
@@ -82,6 +83,7 @@ const dockItems: DockItem[] = [
 export function NavigationDock() {
   const pathname = usePathname()
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -90,6 +92,56 @@ export function NavigationDock() {
     return pathname?.startsWith(path)
   }
 
+  // On mobile, show horizontal scrollable dock
+  if (isMobile) {
+    return (
+      <TooltipProvider>
+        <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
+          <div
+            className={cn(
+              "flex items-center gap-1 px-2 py-2 overflow-x-auto",
+              "backdrop-blur-xl bg-zinc-950/90 border-t border-zinc-800/50",
+              "shadow-lg shadow-black/40",
+              "scrollbar-hide",
+              "safe-area-inset-bottom"
+            )}
+            style={{
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {dockItems.map((item) => {
+              const active = isActive(item.path)
+              return (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => router.push(item.path)}
+                      className={cn(
+                        "h-12 w-12 min-w-[48px] min-h-[48px] rounded-xl transition-all duration-200 shrink-0",
+                        "active:scale-95 active:bg-zinc-800/50",
+                        active
+                          ? "bg-red-600/20 text-red-400 border border-red-600/30"
+                          : "text-zinc-400 active:text-white"
+                      )}
+                    >
+                      {item.icon}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="backdrop-blur-xl bg-zinc-950/90 border-zinc-800/50">
+                    <p className="text-sm font-medium">{item.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
+          </div>
+        </div>
+      </TooltipProvider>
+    )
+  }
+
+  // Desktop: centered dock
   return (
     <TooltipProvider>
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">

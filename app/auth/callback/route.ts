@@ -45,6 +45,17 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createServerClient()
     const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (error) {
+      console.error("[Authority] OAuth callback - Code exchange error:", {
+        error: error.message,
+        code: error.status,
+        environment: process.env.NODE_ENV,
+      })
+      // Redirect to error page as per Supabase docs recommendation
+      return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    }
+    
     if (!error && data.user) {
       // Attempt to extract Notion provider token from session
       // The provider_token is ONLY available in the session object during the callback
